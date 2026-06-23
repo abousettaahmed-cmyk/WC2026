@@ -727,10 +727,18 @@ function startSync(){
   });
 }
 
-async function persistState(){
+async function persistState(matchId){
   setSyncStatus('saving');
   try {
-    await window._setDoc(window._doc(window._db,'wc2026','matches'), STATE);
+    const db  = window._db;
+    const ref = window._doc(db, 'wc2026', 'matches');
+    if(matchId){
+      // Save only the specific match that changed — never overwrites other fields
+      await window._setDoc(ref, { [matchId]: STATE[matchId] }, { merge: true });
+    } else {
+      // Full save (used by ESPN sync) — still merge so nothing gets wiped
+      await window._setDoc(ref, STATE, { merge: true });
+    }
     setSyncStatus('live');
   } catch(e){
     console.error(e);
@@ -1104,7 +1112,7 @@ async function saveMatch(){
 
   STATE[currentMatchId]=ms;
   closeModal();
-  await persistState();
+  await persistState(currentMatchId);
   showToast('✅ Saved!');
 }
 
@@ -1386,7 +1394,7 @@ async function syncESPN(){
   console.log('=== SYNC END ===');
 
   if(updated>0){
-    await persistState();
+    await persistState(null);
     showToast(`✅ Synced ${updated} score${updated>1?'s':''}!`);
   } else {
     showToast('⚠️ Sync: no scores found — check console for details');
