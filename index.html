@@ -699,7 +699,11 @@ function leaderboardData(){
       total+=pts; if(pts===3)exact++; else if(pts===1)result++;
     });
     return {name,total,exact,result};
-  }).sort((a,b)=>b.total-a.total);
+  }).sort((a,b)=>{
+    if(b.total !== a.total) return b.total - a.total;  // 1st: total points
+    if(b.exact !== a.exact) return b.exact - a.exact;  // 2nd: exact scores
+    return b.result - a.result;                         // 3rd: correct results
+  });
 }
 
 // ══════════════════════════════════════════════════
