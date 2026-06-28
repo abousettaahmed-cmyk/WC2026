@@ -819,29 +819,34 @@ function startSync(){
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
       const raw = snap.exists() ? (snap.data() || {}) : {};
-      let needsCleanup = false;
+      const dirtyMatches = [];
       // Auto-clean stale penWinner: remove from any pred where score isn't a draw
       Object.keys(raw).forEach(matchId=>{
+        if(matchId.startsWith('__')) return; // skip meta fields like __bonuses__
         const match = raw[matchId];
         if(!match?.preds) return;
+        let dirty = false;
         Object.keys(match.preds).forEach(name=>{
           const pred = match.preds[name];
           if(pred?.penWinner && parseInt(pred.h) !== parseInt(pred.a)){
             delete pred.penWinner;
-            needsCleanup = true;
+            dirty = true;
           }
         });
         if(match?.actual?.penWinner && parseInt(match.actual.h) !== parseInt(match.actual.a)){
           delete match.actual.penWinner;
-          needsCleanup = true;
+          dirty = true;
         }
+        if(dirty) dirtyMatches.push(matchId);
       });
       STATE = raw;
-      // Write cleaned data back to Firebase so it's permanently fixed
-      if(needsCleanup){
+      // Write back only the dirty matches using updateDoc (never touches other fields)
+      if(dirtyMatches.length > 0){
         const db = window._db;
         const ref = window._doc(db, 'wc2026', 'matches');
-        window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: false }).catch(console.error);
+        const patch = {};
+        dirtyMatches.forEach(id=>{ patch[id] = JSON.parse(JSON.stringify(STATE[id])); });
+        window._updateDoc(ref, patch).catch(console.error);
       }
       setSyncStatus('live');
       renderAll();
@@ -869,8 +874,8 @@ async function persistState(matchId){
         await window._setDoc(ref, { [matchId]: data });
       }
     } else {
-      // Full overwrite (ESPN sync) — replace entire document
-      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)));
+      // Full save (ESPN sync) — merge to never wipe __bonuses__ or other fields
+      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
     }
     setSyncStatus('live');
   } catch(e){
