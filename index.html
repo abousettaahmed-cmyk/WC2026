@@ -286,6 +286,76 @@ header{
   opacity:.4;cursor:not-allowed;
 }
 
+/* ── Penalty buttons ── */
+.pen-btn{
+  background:var(--line);border:1px solid var(--line);border-radius:8px;
+  color:var(--muted);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
+  padding:10px 8px;cursor:pointer;transition:all .2s;text-align:center;
+}
+.pen-btn:hover{border-color:var(--gold);color:var(--gold2);}
+.pen-btn.selected{background:rgba(201,168,76,.2);border-color:var(--gold);color:var(--gold2);}
+.pen-chip{
+  font-size:10px;padding:1px 6px;border-radius:10px;
+  background:rgba(201,168,76,.15);color:var(--gold);font-weight:700;margin-left:3px;
+}
+
+/* ── Golden Boot page ── */
+.boot-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;
+}
+.boot-header h2{
+  font-family:'Bebas Neue',sans-serif;font-size:24px;
+  letter-spacing:2px;color:var(--gold2);
+}
+.boot-card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;margin-bottom:14px;
+}
+.boot-card-header{
+  background:var(--green);padding:10px 16px;
+  font-family:'Bebas Neue',sans-serif;font-size:16px;
+  letter-spacing:2px;color:var(--gold2);
+}
+.boot-pick-row{
+  display:flex;align-items:center;padding:12px 16px;
+  border-bottom:1px solid var(--line);gap:10px;
+}
+.boot-pick-row:last-child{border-bottom:none;}
+.boot-pick-name{font-size:13px;font-weight:600;color:var(--muted);width:80px;flex-shrink:0;}
+.boot-pick-player{
+  flex:1;font-size:14px;font-weight:700;color:var(--text);
+}
+.boot-pick-player.empty{color:var(--muted);font-weight:400;font-style:italic;}
+.boot-pts{
+  font-family:'Bebas Neue',sans-serif;font-size:22px;
+  color:var(--gold2);min-width:30px;text-align:right;
+}
+.boot-input-wrap{
+  display:flex;gap:8px;align-items:center;padding:14px 16px;
+}
+.boot-input-wrap input{
+  flex:1;background:var(--dark);border:1px solid var(--line);
+  color:var(--text);font-family:'Inter',sans-serif;font-size:14px;
+  border-radius:8px;padding:10px 12px;outline:none;
+  transition:border-color .15s;
+}
+.boot-input-wrap input:focus{border-color:var(--gold);}
+.boot-input-wrap input::placeholder{color:var(--muted);}
+.boot-save-btn{
+  background:var(--gold);color:var(--dark);border:none;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
+  padding:10px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+.boot-winner-wrap{
+  background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);
+  border-radius:var(--r);padding:16px;margin-bottom:14px;text-align:center;
+}
+.boot-winner-name{
+  font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold2);
+  letter-spacing:2px;
+}
+.boot-winner-label{font-size:11px;color:var(--muted);margin-top:4px;}
+
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:var(--dark);}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
@@ -462,6 +532,7 @@ header{
     <button class="tab-btn" onclick="showPage('group-K',this)">Grp K</button>
     <button class="tab-btn" onclick="showPage('group-L',this)">Grp L</button>
     <button class="tab-btn" onclick="showPage('knockout',this)">⚡ KO</button>
+    <button class="tab-btn" onclick="showPage('goldenboot',this)">👟 Boot</button>
   </div>
 
   <div id="page-today"       class="page active"></div>
@@ -479,6 +550,7 @@ header{
   <div id="page-group-K"    class="page"></div>
   <div id="page-group-L"    class="page"></div>
   <div id="page-knockout"   class="page"></div>
+  <div id="page-goldenboot" class="page"></div>
 </div>
 
 <!-- Modal -->
@@ -499,7 +571,16 @@ header{
             <input type="number" id="actual-h" min="0" max="20" placeholder="0"/>
             <span class="dash">—</span>
             <input type="number" id="actual-a" min="0" max="20" placeholder="0"/>
-            <span style="margin-left:8px;color:var(--muted);font-size:11px;">official result</span>
+            <span style="margin-left:8px;color:var(--muted);font-size:11px;">90 min score</span>
+          </div>
+        </div>
+        <!-- Admin: penalty winner (knockout only, shown when draw) -->
+        <div id="actual-pen-section" style="display:none;margin-top:10px">
+          <div class="section-label">Penalty Winner</div>
+          <div class="actual-wrap" style="display:flex;gap:10px;align-items:center">
+            <button id="actual-pen-home" class="pen-btn" onclick="setAdminPen('home')" style="flex:1"></button>
+            <span style="color:var(--muted);font-size:12px;">or</span>
+            <button id="actual-pen-away" class="pen-btn" onclick="setAdminPen('away')" style="flex:1"></button>
           </div>
         </div>
       </div>
@@ -511,6 +592,14 @@ header{
           <input type="number" id="my-pred-h" min="0" max="20" placeholder="0"/>
           <span class="dash">-</span>
           <input type="number" id="my-pred-a" min="0" max="20" placeholder="0"/>
+        </div>
+      </div>
+      <!-- My penalty pick (knockout only, shown when I predict a draw) -->
+      <div id="my-pen-section" style="display:none;margin-top:10px">
+        <div class="section-label">If Draw — Who Wins Penalties?</div>
+        <div style="display:flex;gap:10px">
+          <button id="my-pen-home" class="pen-btn" onclick="setMyPen('home')" style="flex:1"></button>
+          <button id="my-pen-away" class="pen-btn" onclick="setMyPen('away')" style="flex:1"></button>
         </div>
       </div>
 
@@ -678,31 +767,51 @@ let unsubscribe = null;
 // ══════════════════════════════════════════════════
 //  POINTS
 // ══════════════════════════════════════════════════
+const KNOCKOUT_IDS = new Set(['M73','M74','M75','M76','M77','M78','M79','M80',
+  'M81','M82','M83','M84','M85','M86','M87','M88','M89','M90','M91','M92',
+  'M93','M94','M95','M96','M97','M98','M99','M100','M101','M102','M103','M104']);
+
+function isKnockout(matchId){ return KNOCKOUT_IDS.has(matchId); }
+
 function calcResult(h,a){ return h>a?'H':a>h?'A':'D'; }
-function calcPoints(actual, pred){
+
+function calcPoints(actual, pred, matchId){
   if(!actual || pred?.h==='' || pred?.h===undefined) return null;
   const aH=parseInt(actual.h), aA=parseInt(actual.a);
   const pH=parseInt(pred.h),   pA=parseInt(pred.a);
   if(isNaN(aH)||isNaN(aA)||isNaN(pH)||isNaN(pA)) return null;
-  if(aH===pH && aA===pA) return 3;
-  if(calcResult(aH,aA)===calcResult(pH,pA)) return 1;
-  return 0;
+  let pts = 0;
+  if(aH===pH && aA===pA) pts=3;
+  else if(calcResult(aH,aA)===calcResult(pH,pA)) pts=1;
+  // Knockout penalty bonus: +1 if draw at 90min and correct pen pick
+  if(pts>0 && isKnockout(matchId) && aH===aA && actual.penWinner && pred.penWinner){
+    if(actual.penWinner===pred.penWinner) pts+=1;
+  }
+  return pts;
 }
 function leaderboardData(){
+  const gb = STATE['__goldenboot__'] || {};
+  const actualWinner = gb.actual || '';
   return FRIENDS.map(name=>{
     let total=0,exact=0,result=0;
     ALL_MATCHES.forEach(m=>{
       const ms=STATE[m.id];
       if(!ms?.actual || !ms.preds?.[name]) return;
-      const pts=calcPoints(ms.actual, ms.preds[name]);
+      const pts=calcPoints(ms.actual, ms.preds[name], m.id);
       if(pts===null) return;
-      total+=pts; if(pts===3)exact++; else if(pts===1)result++;
+      total+=pts;
+      if(pts>=3) exact++;
+      else if(pts===1||pts===2) result++;
     });
-    return {name,total,exact,result};
+    // Golden boot: +5 if correct
+    const myPick=(gb.picks?.[name]||'').trim().toLowerCase();
+    const bootCorrect=actualWinner&&myPick&&myPick===actualWinner.trim().toLowerCase();
+    if(bootCorrect) total+=5;
+    return {name,total,exact,result,bootCorrect,myPick:gb.picks?.[name]||''};
   }).sort((a,b)=>{
-    if(b.total !== a.total) return b.total - a.total;  // 1st: total points
-    if(b.exact !== a.exact) return b.exact - a.exact;  // 2nd: exact scores
-    return b.result - a.result;                         // 3rd: correct results
+    if(b.total!==a.total) return b.total-a.total;
+    if(b.exact!==a.exact) return b.exact-a.exact;
+    return b.result-a.result;
   });
 }
 
@@ -844,9 +953,12 @@ function predChips(matchId){
     const pred = ms?.preds?.[name];
     const isMe = name===currentUser;
     if(!pred) return `<span class="pred-chip${isMe?' mine':''}">${name.slice(0,3)} ?</span>`;
-    const pts = calcPoints(ms?.actual, pred);
-    const cls = pts===3?'exact':pts===1?'result':pts===0?'wrong':'';
-    return `<span class="pred-chip ${cls}${isMe?' mine':''}">${name.slice(0,3)} ${pred.h}-${pred.a}</span>`;
+    const pts = calcPoints(ms?.actual, pred, matchId);
+    const cls = pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
+    const penChip = pred.penWinner
+      ? `<span class="pen-chip">${pred.penWinner==='home'?pred.h?.toString().slice(0,3)||'?':'Away'} pens</span>`
+      : '';
+    return `<span class="pred-chip ${cls}${isMe?' mine':''}">${name.slice(0,3)} ${pred.h}-${pred.a}${penChip}</span>`;
   }).join('');
 }
 
@@ -959,6 +1071,45 @@ function renderKnockout(){
 // ══════════════════════════════════════════════════
 //  MODAL
 // ══════════════════════════════════════════════════
+let currentPenPick = null; // 'home' or 'away'
+let adminPenPick = null;
+
+function setMyPen(side){
+  currentPenPick = side;
+  document.getElementById('my-pen-home').classList.toggle('selected', side==='home');
+  document.getElementById('my-pen-away').classList.toggle('selected', side==='away');
+}
+function setAdminPen(side){
+  adminPenPick = side;
+  document.getElementById('actual-pen-home').classList.toggle('selected', side==='home');
+  document.getElementById('actual-pen-away').classList.toggle('selected', side==='away');
+}
+
+function updatePenSections(m, ms){
+  const ko = isKnockout(m.id);
+  // My pen section: show if knockout and I predict a draw
+  const myPenSec = document.getElementById('my-pen-section');
+  if(myPenSec) myPenSec.style.display = ko ? 'block' : 'none';
+  if(ko && myPenSec){
+    const myPred = ms.preds?.[currentUser] || {};
+    document.getElementById('my-pen-home').textContent = m.home;
+    document.getElementById('my-pen-away').textContent = m.away;
+    currentPenPick = myPred.penWinner || null;
+    setMyPen(currentPenPick);
+  }
+  // Admin pen section
+  const adminPenSec = document.getElementById('actual-pen-section');
+  if(adminPenSec && currentUser===ADMIN){
+    adminPenSec.style.display = ko ? 'block' : 'none';
+    if(ko){
+      document.getElementById('actual-pen-home').textContent = m.home;
+      document.getElementById('actual-pen-away').textContent = m.away;
+      adminPenPick = ms.actual?.penWinner || null;
+      setAdminPen(adminPenPick);
+    }
+  }
+}
+
 function openModal(id){
   currentMatchId=id;
   const m=ALL_MATCHES.find(x=>x.id===id);
@@ -970,7 +1121,7 @@ function openModal(id){
     `${m.home} <span>vs</span> ${m.away}<br>
      <span style="font-size:12px;color:var(--muted)">${m.date} · ${m.time} · ${m.venue}</span>`;
 
-  // Admin: show actual score inputs — ALWAYS editable regardless of lock
+  // Admin score inputs
   const actualSec=document.getElementById('actual-section');
   actualSec.style.display = currentUser===ADMIN ? 'block' : 'none';
   if(currentUser===ADMIN){
@@ -984,39 +1135,47 @@ function openModal(id){
     aInput.disabled = false;
   }
 
-  // My prediction — locked or open
+  // My prediction
   const myPredSection = document.querySelector('.my-pred-section');
   const myPred=ms.preds?.[currentUser]||{h:'',a:''};
-
   if(locked && currentUser!==ADMIN){
-    const existing = myPred.h!=='' ? `Your prediction: ${myPred.h} - ${myPred.a}` : 'No prediction entered before kickoff';
-    myPredSection.innerHTML=`<div class="pred-input-locked">🔒 ${existing}</div>`;
+    let lockMsg = myPred.h!=='' ? `Your prediction: ${myPred.h} - ${myPred.a}` : 'No prediction entered before kickoff';
+    if(myPred.penWinner) lockMsg += ` (pens: ${myPred.penWinner==='home'?m.home:m.away})`;
+    myPredSection.innerHTML=`<div class="pred-input-locked">🔒 ${lockMsg}</div>`;
   } else {
     myPredSection.innerHTML=`
       <div class="score-input-wrap">
         <input type="number" id="my-pred-h" min="0" max="20" placeholder="0" value="${myPred.h}"/>
         <span class="dash">-</span>
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value="${myPred.a}"/>
-        <span style="margin-left:8px;color:var(--muted);font-size:11px;">${currentUser===ADMIN&&locked?'your pred (admin)':'your prediction'}</span>
+        <span style="margin-left:8px;color:var(--muted);font-size:11px;">${isKnockout(id)?'90 min score':'your prediction'}</span>
       </div>`;
   }
 
-  // Save button — always visible for admin; hidden for others when locked
+  // Penalty sections
+  updatePenSections(m, ms);
+
+  // Save button
   const saveBtn = document.querySelector('.btn-primary');
   saveBtn.style.display = (locked && currentUser!==ADMIN) ? 'none' : 'block';
 
   // Predictions grid
   const grid=document.getElementById('all-preds-grid');
-
   if(currentUser===ADMIN){
-    // Admin: always sees editable inputs for ALL players, locked or not
     const headerMsg = locked
       ? `<div style="grid-column:1/-1;color:var(--gold);font-size:11px;text-align:center;padding:4px 0 8px">⚙️ Admin — edit any prediction</div>`
-      : `<div style="grid-column:1/-1;color:var(--muted);font-size:11px;text-align:center;padding:4px 0 8px">Other predictions are hidden from players until kickoff</div>`;
+      : `<div style="grid-column:1/-1;color:var(--muted);font-size:11px;text-align:center;padding:4px 0 8px">Predictions hidden from players until kickoff</div>`;
     grid.innerHTML = headerMsg + FRIENDS.map(name=>{
       const pred=ms.preds?.[name]||{h:'',a:''};
-      const pts=calcPoints(ms.actual, pred);
-      const cls=pts===3?'exact':pts===1?'result':pts===0?'wrong':'';
+      const pts=calcPoints(ms.actual, pred, id);
+      const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
+      const penInfo = isKnockout(id) ? `
+        <div style="margin-top:6px;display:flex;gap:6px">
+          <button class="pen-btn${pred.penWinner==='home'?' selected':''}" style="flex:1;font-size:11px;padding:5px"
+            onclick="setAdminPlayerPen('${name}','home','${m.home}')">${m.home}</button>
+          <button class="pen-btn${pred.penWinner==='away'?' selected':''}" style="flex:1;font-size:11px;padding:5px"
+            onclick="setAdminPlayerPen('${name}','away','${m.away}')">${m.away}</button>
+        </div>` : '';
       return `<div class="pred-display-row ${cls}" style="flex-direction:column;gap:6px;align-items:flex-start">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
         <div class="score-input-wrap">
@@ -1029,10 +1188,10 @@ function openModal(id){
             style="width:44px;height:32px;font-size:15px"/>
           ${pts!==null?`<span style="margin-left:6px;font-size:11px;color:var(--muted)">${pts}pt${pts!==1?'s':''}</span>`:''}
         </div>
+        ${penInfo}
       </div>`;
     }).join('');
   } else if(!locked){
-    // Regular user before kickoff: show ready/pending status only
     grid.innerHTML=`<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:8px 0">
       Other predictions are hidden until kickoff 🔒
     </div>
@@ -1045,21 +1204,44 @@ function openModal(id){
       </div>`;
     }).join('')}`;
   } else {
-    // Regular user after kickoff: show all scores read-only
     grid.innerHTML=FRIENDS.map(name=>{
       const pred=ms.preds?.[name];
-      const pts=calcPoints(ms.actual, pred);
-      const cls=pts===3?'exact':pts===1?'result':pts===0?'wrong':'';
+      const pts=calcPoints(ms.actual, pred, id);
+      const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
       const scoreStr=pred?`${pred.h} - ${pred.a}`:'No prediction';
+      const penStr=pred?.penWinner?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
       const ptsStr=pts!==null?` · ${pts}pt${pts!==1?'s':''}`:' · pending';
       return `<div class="pred-display-row ${cls}">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
-        <span class="pscore">${scoreStr}<span style="font-size:11px;opacity:.7">${ptsStr}</span></span>
+        <span class="pscore">${scoreStr}${penStr}<span style="font-size:11px;opacity:.7">${ptsStr}</span></span>
       </div>`;
     }).join('');
   }
 
   document.getElementById('overlay').classList.add('open');
+}
+
+// Admin editing individual player pen picks in the grid
+const adminPlayerPens = {};
+function setAdminPlayerPen(name, side, teamName){
+  adminPlayerPens[name] = side;
+  // Update button styles
+  const ms = STATE[currentMatchId]||{actual:null,preds:{}};
+  const pred = ms.preds?.[name]||{};
+  // Re-render just that player's pen buttons via class toggle
+  const allRows = document.querySelectorAll('.pred-display-row');
+  allRows.forEach(row=>{
+    const pname = row.querySelector('.pname')?.textContent?.replace(' (you)','');
+    if(pname===name){
+      row.querySelectorAll('.pen-btn').forEach(btn=>{
+        btn.classList.toggle('selected',
+          (btn.textContent===teamName && side==='home') ||
+          (btn.textContent!==teamName && side==='away') ? false :
+          btn.textContent===teamName
+        );
+      });
+    }
+  });
 }
 
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); currentMatchId=null; }
@@ -1069,8 +1251,8 @@ async function saveMatch(){
   if(!currentMatchId) return;
   const m=ALL_MATCHES.find(x=>x.id===currentMatchId);
   const locked=isLocked(m);
+  const ko=isKnockout(currentMatchId);
 
-  // Non-admin on a locked match — nothing to do
   if(locked && currentUser!==ADMIN){
     closeModal();
     showToast('🔒 Predictions locked at kickoff');
@@ -1080,37 +1262,47 @@ async function saveMatch(){
   if(!STATE[currentMatchId]) STATE[currentMatchId]={actual:null,preds:{}};
   const ms=STATE[currentMatchId];
 
-  // ── Admin: update real score ──
+  // ── Admin: update real score + penalty winner ──
   if(currentUser===ADMIN){
     const aH=document.getElementById('actual-h').value.trim();
     const aA=document.getElementById('actual-a').value.trim();
     if(aH!=='' && aA!==''){
       ms.actual={h:parseInt(aH), a:parseInt(aA)};
+      if(ko && adminPenPick) ms.actual.penWinner=adminPenPick;
     } else if(aH==='' && aA===''){
       ms.actual=null;
     }
 
-    // Admin: save editable predictions for ALL players
+    // Admin: save all players' predictions + pen picks
     if(!ms.preds) ms.preds={};
     FRIENDS.forEach(name=>{
       const pH=document.getElementById(`admin-pred-${name}-h`)?.value.trim() ?? '';
       const pA=document.getElementById(`admin-pred-${name}-a`)?.value.trim() ?? '';
       if(pH!=='' && pA!==''){
-        ms.preds[name]={h:pH, a:pA};
-      } else if(pH==='' && pA===''){
-        // only wipe if explicitly both blanked AND there was no prior pred
-        // leave existing pred intact if only one field cleared
+        const pen = adminPlayerPens[name] || ms.preds[name]?.penWinner || null;
+        ms.preds[name]={h:pH, a:pA, ...(ko&&pen?{penWinner:pen}:{})};
       }
     });
+    // Clear temp pen picks
+    Object.keys(adminPlayerPens).forEach(k=>delete adminPlayerPens[k]);
   }
 
-  // ── Regular user before kickoff: save own prediction ──
+  // ── Regular user: save own prediction + pen pick ──
   if(!locked && currentUser!==ADMIN){
     const pH=document.getElementById('my-pred-h')?.value ?? '';
     const pA=document.getElementById('my-pred-a')?.value ?? '';
     if(pH!=='' && pA!==''){
       if(!ms.preds) ms.preds={};
-      ms.preds[currentUser]={h:pH, a:pA};
+      ms.preds[currentUser]={h:pH, a:pA, ...(ko&&currentPenPick?{penWinner:currentPenPick}:{})};
+    }
+  }
+  // Admin own prediction with pen
+  if(!locked && currentUser===ADMIN){
+    const pH=document.getElementById('my-pred-h')?.value ?? '';
+    const pA=document.getElementById('my-pred-a')?.value ?? '';
+    if(pH!=='' && pA!==''){
+      if(!ms.preds) ms.preds={};
+      ms.preds[currentUser]={h:pH, a:pA, ...(ko&&currentPenPick?{penWinner:currentPenPick}:{})};
     }
   }
 
@@ -1518,12 +1710,106 @@ self.addEventListener('fetch', e=>{
 // ══════════════════════════════════════════════════
 //  RENDER ALL
 // ══════════════════════════════════════════════════
+// ── Golden Boot ──
+function renderGoldenBoot(){
+  const gb = STATE['__goldenboot__'] || {actual:'', picks:{}};
+  const actualWinner = gb.actual || '';
+  const myPick = gb.picks?.[currentUser] || '';
+  const locked = actualWinner !== ''; // lock picks once winner is declared
+
+  let html = `
+    <div class="boot-header">
+      <div>
+        <h2>👟 Golden Boot</h2>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Pick the tournament top scorer · Correct = 5 bonus pts</div>
+      </div>
+    </div>`;
+
+  // Winner declared banner
+  if(actualWinner){
+    html += `<div class="boot-winner-wrap">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">🏆 GOLDEN BOOT WINNER</div>
+      <div class="boot-winner-name">${actualWinner}</div>
+    </div>`;
+  }
+
+  // Admin: set actual winner
+  if(currentUser===ADMIN){
+    html += `<div class="boot-card" style="margin-bottom:14px">
+      <div class="boot-card-header">⚙️ Admin — Set Winner</div>
+      <div class="boot-input-wrap">
+        <input type="text" id="boot-actual-input" placeholder="Enter player name..."
+          value="${actualWinner}"/>
+        <button class="boot-save-btn" onclick="saveBootWinner()">Save</button>
+      </div>
+    </div>`;
+  }
+
+  // My pick
+  if(!locked || myPick){
+    html += `<div class="boot-card" style="margin-bottom:14px">
+      <div class="boot-card-header">My Pick</div>
+      <div class="boot-input-wrap">
+        ${locked
+          ? `<div style="font-size:15px;font-weight:700;color:${actualWinner&&myPick.toLowerCase()===actualWinner.toLowerCase()?'var(--exact)':'var(--text)'}">
+              ${myPick||'No pick entered'}
+              ${actualWinner&&myPick.toLowerCase()===actualWinner.toLowerCase()?'<span style="color:var(--exact);font-size:12px"> ✅ +5 pts!</span>':''}
+            </div>`
+          : `<input type="text" id="boot-my-input" placeholder="e.g. Kylian Mbappé"
+              value="${myPick}"/>
+             <button class="boot-save-btn" onclick="saveMyBootPick()">Save</button>`
+        }
+      </div>
+    </div>`;
+  }
+
+  // Everyone's picks
+  html += `<div class="boot-card">
+    <div class="boot-card-header">All Picks</div>
+    ${FRIENDS.map(name=>{
+      const pick = gb.picks?.[name] || '';
+      const correct = locked && pick && pick.toLowerCase()===actualWinner.toLowerCase();
+      return `<div class="boot-pick-row">
+        <div class="boot-pick-name">${name}</div>
+        <div class="boot-pick-player ${pick?'':'empty'}">${pick||'No pick yet'}</div>
+        ${correct ? `<div style="font-size:13px;color:var(--exact)">+5 ✅</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  document.getElementById('page-goldenboot').innerHTML = html;
+}
+
+async function saveBootWinner(){
+  const val = document.getElementById('boot-actual-input')?.value.trim();
+  if(!val) return;
+  if(!STATE['__goldenboot__']) STATE['__goldenboot__']={actual:'',picks:{}};
+  STATE['__goldenboot__'].actual = val;
+  await persistState('__goldenboot__');
+  showToast('✅ Golden Boot winner saved!');
+  renderAll();
+}
+
+async function saveMyBootPick(){
+  const val = document.getElementById('boot-my-input')?.value.trim();
+  if(!val){ showToast('⚠️ Enter a player name first'); return; }
+  const gb = STATE['__goldenboot__'] || {actual:'',picks:{}};
+  if(gb.actual){ showToast('🔒 Winner already declared — picks are locked'); return; }
+  if(!gb.picks) gb.picks={};
+  gb.picks[currentUser] = val;
+  STATE['__goldenboot__'] = gb;
+  await persistState('__goldenboot__');
+  showToast('✅ Your pick saved!');
+  renderAll();
+}
+
 function renderAll(){
   if(!document.getElementById('page-leaderboard')) return;
   renderToday();
   renderLeaderboard();
   'ABCDEFGHIJKL'.split('').forEach(g=>renderGroupPage(g));
   renderKnockout();
+  renderGoldenBoot();
 }
 
 // ══════════════════════════════════════════════════
