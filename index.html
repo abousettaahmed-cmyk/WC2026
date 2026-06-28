@@ -818,9 +818,40 @@ function startSync(){
     setSyncStatus('connecting');
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
-      if(!_pendingWrite){
-        // Only update STATE from Firebase when we're not in the middle of writing
-        STATE = snap.exists() ? (snap.data() || {}) : {};
+      if(snap.exists()){
+        const fbData = snap.data() || {};
+        // Deep merge: Firebase is authoritative for other users' data,
+        // but our local STATE wins for the current user's own predictions
+        // to prevent our just-saved data from being overwritten
+        Object.keys(fbData).forEach(matchId=>{
+          if(!STATE[matchId]){
+            STATE[matchId] = fbData[matchId];
+          } else {
+            // Merge preds: Firebase wins for other users, local wins for currentUser
+            const fbMatch = fbData[matchId] || {};
+            const localMatch = STATE[matchId];
+            // Always take actual score from Firebase (admin sets this)
+            if(fbMatch.actual !== undefined) localMatch.actual = fbMatch.actual;
+            // Merge preds
+            if(fbMatch.preds){
+              if(!localMatch.preds) localMatch.preds = {};
+              Object.keys(fbMatch.preds).forEach(name=>{
+                if(name !== currentUser){
+                  localMatch.preds[name] = fbMatch.preds[name];
+                }
+                // currentUser's preds: keep local (just saved)
+              });
+            }
+          }
+        });
+        // Add any matches from Firebase not yet in local STATE
+        Object.keys(fbData).forEach(matchId=>{
+          if(!STATE[matchId]) STATE[matchId] = fbData[matchId];
+        });
+        // Also sync bonus data
+        if(fbData['__bonuses__']) STATE['__bonuses__'] = fbData['__bonuses__'];
+      } else {
+        STATE = {};
       }
       setSyncStatus('live');
       renderAll();
@@ -835,34 +866,22 @@ let _pendingWrite = false;
 
 async function persistState(matchId){
   setSyncStatus('saving');
-  _pendingWrite = true;
   try {
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
-
     if(matchId){
-      // updateDoc with a top-level field key fully replaces just that field
-      // This is safe — it only touches matchId, leaves all other matches intact
-      const data = JSON.parse(JSON.stringify(STATE[matchId] ?? null));
-      try {
-        await window._updateDoc(ref, { [matchId]: data });
-      } catch(e){
-        // Document doesn't exist yet — create it
-        if(e.code === 'not-found'){
-          await window._setDoc(ref, { [matchId]: data });
-        } else { throw e; }
-      }
+      // setDoc with merge:true replaces the top-level field [matchId] entirely
+      // while leaving all other match fields untouched
+      const payload = { [matchId]: JSON.parse(JSON.stringify(STATE[matchId] ?? null)) };
+      await window._setDoc(ref, payload, { merge: true });
     } else {
-      // Full save (ESPN sync) — use merge to avoid wiping other matches
       await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
     }
     setSyncStatus('live');
   } catch(e){
-    console.error('[persistState error]', e);
+    console.error('[persistState]', e);
     setSyncStatus('error');
     showToast('⚠️ Save failed — check connection');
-  } finally {
-    _pendingWrite = false;
   }
 }
 
@@ -1826,21 +1845,22 @@ async function saveBonusActual(key){
   STATE['__bonuses__'][key].actual = val;
   await persistState('__bonuses__');
   showToast(`✅ ${key==='scorer'?'Top Scorer':'WC Winner'} set!`);
-  // onSnapshot will re-render after Firebase confirms
+  renderBonuses();
+  renderLeaderboard();
 }
 
 async function saveMyBonus(key){
   const val = document.getElementById(`bonus-my-${key}`)?.value.trim();
   if(!val){ showToast('⚠️ Enter a value first'); return; }
   if(!STATE['__bonuses__']) STATE['__bonuses__']={};
-  const bonusKey = STATE['__bonuses__'][key];
-  if(bonusKey?.actual){ showToast('🔒 Already declared — picks locked'); return; }
+  if(STATE['__bonuses__'][key]?.actual){ showToast('🔒 Already declared — picks locked'); return; }
   if(!STATE['__bonuses__'][key]) STATE['__bonuses__'][key]={actual:'',picks:{}};
   if(!STATE['__bonuses__'][key].picks) STATE['__bonuses__'][key].picks={};
   STATE['__bonuses__'][key].picks[currentUser] = val;
   await persistState('__bonuses__');
   showToast('✅ Pick saved!');
-  // onSnapshot will re-render after Firebase confirms
+  renderBonuses();
+  renderLeaderboard();
 }
 
 function renderAll(){
