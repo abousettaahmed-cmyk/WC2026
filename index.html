@@ -819,35 +819,68 @@ function startSync(){
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
       const raw = snap.exists() ? (snap.data() || {}) : {};
+
+      // Clean stale penWinner values (non-draw scores)
       const dirtyMatches = [];
-      // Auto-clean stale penWinner: remove from any pred where score isn't a draw
       Object.keys(raw).forEach(matchId=>{
-        if(matchId.startsWith('__')) return; // skip meta fields like __bonuses__
+        if(matchId.startsWith('__')) return;
         const match = raw[matchId];
         if(!match?.preds) return;
         let dirty = false;
         Object.keys(match.preds).forEach(name=>{
           const pred = match.preds[name];
           if(pred?.penWinner && parseInt(pred.h) !== parseInt(pred.a)){
-            delete pred.penWinner;
-            dirty = true;
+            delete pred.penWinner; dirty = true;
           }
         });
         if(match?.actual?.penWinner && parseInt(match.actual.h) !== parseInt(match.actual.a)){
-          delete match.actual.penWinner;
-          dirty = true;
+          delete match.actual.penWinner; dirty = true;
         }
         if(dirty) dirtyMatches.push(matchId);
       });
-      STATE = raw;
-      // Write back only the dirty matches using updateDoc (never touches other fields)
+
+      // Deep merge: Firebase is authoritative for most data,
+      // but for __bonuses__ we need to deep-merge to preserve just-written picks
+      const merged = Object.assign({}, raw);
+
+      // For __bonuses__: merge picks from local STATE if Firebase doesn't have them yet
+      if(STATE['__bonuses__'] && raw['__bonuses__']){
+        const localB = STATE['__bonuses__'];
+        const fbB = raw['__bonuses__'];
+        const mergedB = JSON.parse(JSON.stringify(fbB));
+        ['scorer','winner'].forEach(k=>{
+          if(localB[k]){
+            if(!mergedB[k]) mergedB[k] = localB[k];
+            else {
+              // Prefer local actual if Firebase doesn't have it yet
+              if(localB[k].actual && !fbB[k]?.actual) mergedB[k].actual = localB[k].actual;
+              // Merge picks
+              if(localB[k].picks){
+                if(!mergedB[k].picks) mergedB[k].picks = {};
+                Object.keys(localB[k].picks).forEach(name=>{
+                  if(!fbB[k]?.picks?.[name]){
+                    mergedB[k].picks[name] = localB[k].picks[name];
+                  }
+                });
+              }
+            }
+          }
+        });
+        merged['__bonuses__'] = mergedB;
+      } else if(STATE['__bonuses__'] && !raw['__bonuses__']){
+        merged['__bonuses__'] = STATE['__bonuses__']; // Firebase doesn't have it yet
+      }
+
+      STATE = merged;
+
+      // Write back dirty matches (stale penWinner cleanup)
       if(dirtyMatches.length > 0){
-        const db = window._db;
         const ref = window._doc(db, 'wc2026', 'matches');
         const patch = {};
         dirtyMatches.forEach(id=>{ patch[id] = JSON.parse(JSON.stringify(STATE[id])); });
         window._updateDoc(ref, patch).catch(console.error);
       }
+
       setSyncStatus('live');
       renderAll();
     }, err=>{
