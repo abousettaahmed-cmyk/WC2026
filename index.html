@@ -14,7 +14,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, onSnapshot, collection, deleteField
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ════════════════════════════════════════════════════
@@ -39,6 +39,7 @@ window._db          = db;
 window._doc         = doc;
 window._getDoc      = getDoc;
 window._setDoc      = setDoc;
+window._updateDoc   = updateDoc;
 window._onSnapshot  = onSnapshot;
 window._collection  = collection;
 window._deleteField = deleteField;
@@ -838,15 +839,26 @@ async function persistState(matchId){
   try {
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
+
     if(matchId){
-      const data = JSON.parse(JSON.stringify(STATE[matchId] || {}));
-      await window._setDoc(ref, { [matchId]: data }, { merge: true });
+      // updateDoc with a top-level field key fully replaces just that field
+      // This is safe — it only touches matchId, leaves all other matches intact
+      const data = JSON.parse(JSON.stringify(STATE[matchId] ?? null));
+      try {
+        await window._updateDoc(ref, { [matchId]: data });
+      } catch(e){
+        // Document doesn't exist yet — create it
+        if(e.code === 'not-found'){
+          await window._setDoc(ref, { [matchId]: data });
+        } else { throw e; }
+      }
     } else {
+      // Full save (ESPN sync) — use merge to avoid wiping other matches
       await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
     }
     setSyncStatus('live');
   } catch(e){
-    console.error(e);
+    console.error('[persistState error]', e);
     setSyncStatus('error');
     showToast('⚠️ Save failed — check connection');
   } finally {
@@ -1218,20 +1230,14 @@ function closeModalOnOverlay(e){ if(e.target===document.getElementById('overlay'
 
 async function clearMyPred(){
   if(!currentMatchId) return;
-  const matchId = currentMatchId; // capture before any close
-  // Clear from state
-  if(STATE[matchId]?.preds?.[currentUser]){
-    delete STATE[matchId].preds[currentUser];
-  }
-  // Clear the input fields visually (stay on modal)
-  const hEl = document.getElementById('my-pred-h');
-  const aEl = document.getElementById('my-pred-a');
-  if(hEl) hEl.value = '';
-  if(aEl) aEl.value = '';
+  const matchId = currentMatchId;
+  // Clear from local state
+  if(!STATE[matchId]) STATE[matchId]={actual:null,preds:{}};
+  if(STATE[matchId].preds) delete STATE[matchId].preds[currentUser];
   // Clear pen pick
   currentPenPick = null;
   renderPenButtons();
-  // Remove the × button since no prediction now
+  // Clear the input fields visually — stay on modal
   const myPredSection = document.querySelector('.my-pred-section');
   if(myPredSection){
     myPredSection.innerHTML=`
@@ -1240,6 +1246,21 @@ async function clearMyPred(){
         <span class="dash">-</span>
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value=""/>
       </div>`;
+  }
+  // Refresh the all-predictions grid to show your entry as cleared
+  const m = ALL_MATCHES.find(x=>x.id===matchId);
+  const ms = STATE[matchId];
+  const grid = document.getElementById('all-preds-grid');
+  if(grid && m){
+    // Rebuild just the current user's row in the grid as "Pending"
+    const rows = grid.querySelectorAll('.pred-display-row');
+    rows.forEach(row=>{
+      const pname = row.querySelector('.pname');
+      if(pname && pname.textContent.includes('(you)')){
+        row.className='pred-display-row';
+        row.querySelector('.pscore').textContent='⏳ Pending';
+      }
+    });
   }
   await persistState(matchId);
   showToast('🗑️ Prediction cleared');
