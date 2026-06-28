@@ -818,41 +818,7 @@ function startSync(){
     setSyncStatus('connecting');
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
-      if(snap.exists()){
-        const fbData = snap.data() || {};
-        // Deep merge: Firebase is authoritative for other users' data,
-        // but our local STATE wins for the current user's own predictions
-        // to prevent our just-saved data from being overwritten
-        Object.keys(fbData).forEach(matchId=>{
-          if(!STATE[matchId]){
-            STATE[matchId] = fbData[matchId];
-          } else {
-            // Merge preds: Firebase wins for other users, local wins for currentUser
-            const fbMatch = fbData[matchId] || {};
-            const localMatch = STATE[matchId];
-            // Always take actual score from Firebase (admin sets this)
-            if(fbMatch.actual !== undefined) localMatch.actual = fbMatch.actual;
-            // Merge preds
-            if(fbMatch.preds){
-              if(!localMatch.preds) localMatch.preds = {};
-              Object.keys(fbMatch.preds).forEach(name=>{
-                if(name !== currentUser){
-                  localMatch.preds[name] = fbMatch.preds[name];
-                }
-                // currentUser's preds: keep local (just saved)
-              });
-            }
-          }
-        });
-        // Add any matches from Firebase not yet in local STATE
-        Object.keys(fbData).forEach(matchId=>{
-          if(!STATE[matchId]) STATE[matchId] = fbData[matchId];
-        });
-        // Also sync bonus data
-        if(fbData['__bonuses__']) STATE['__bonuses__'] = fbData['__bonuses__'];
-      } else {
-        STATE = {};
-      }
+      STATE = snap.exists() ? (snap.data() || {}) : {};
       setSyncStatus('live');
       renderAll();
     }, err=>{
@@ -1250,10 +1216,8 @@ function closeModalOnOverlay(e){ if(e.target===document.getElementById('overlay'
 async function clearMyPred(){
   if(!currentMatchId) return;
   const matchId = currentMatchId;
-  // Clear from local state
   if(!STATE[matchId]) STATE[matchId]={actual:null,preds:{}};
   if(STATE[matchId].preds) delete STATE[matchId].preds[currentUser];
-  // Clear pen pick
   currentPenPick = null;
   renderPenButtons();
   // Clear the input fields visually — stay on modal
@@ -1266,21 +1230,7 @@ async function clearMyPred(){
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value=""/>
       </div>`;
   }
-  // Refresh the all-predictions grid to show your entry as cleared
-  const m = ALL_MATCHES.find(x=>x.id===matchId);
-  const ms = STATE[matchId];
-  const grid = document.getElementById('all-preds-grid');
-  if(grid && m){
-    // Rebuild just the current user's row in the grid as "Pending"
-    const rows = grid.querySelectorAll('.pred-display-row');
-    rows.forEach(row=>{
-      const pname = row.querySelector('.pname');
-      if(pname && pname.textContent.includes('(you)')){
-        row.className='pred-display-row';
-        row.querySelector('.pscore').textContent='⏳ Pending';
-      }
-    });
-  }
+  // Save to Firebase first — onSnapshot will confirm and re-render
   await persistState(matchId);
   showToast('🗑️ Prediction cleared');
 }
@@ -1358,9 +1308,9 @@ async function saveMatch(){
   }
 
   const matchIdToSave = currentMatchId;
-  STATE[matchIdToSave]=ms;
-  closeModal();
+  STATE[matchIdToSave] = ms;
   await persistState(matchIdToSave);
+  closeModal();
   showToast('✅ Saved!');
 }
 
