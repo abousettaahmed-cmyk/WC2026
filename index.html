@@ -767,8 +767,8 @@ function calcPoints(actual, pred, matchId){
   let pts = 0;
   if(aH===pH && aA===pA) pts=3;
   else if(calcResult(aH,aA)===calcResult(pH,pA)) pts=1;
-  // Knockout: +1 bonus for correct pen pick (always counts if both have a pick)
-  if(pts>0 && matchId && isKnockout(matchId) && actual.penWinner && pred.penWinner){
+  // Knockout: +1 bonus for correct pen pick — only valid when 90min score is a draw
+  if(pts>0 && matchId && isKnockout(matchId) && aH===aA && actual.penWinner && pred.penWinner){
     if(actual.penWinner===pred.penWinner) pts+=1;
   }
   return pts;
@@ -818,7 +818,31 @@ function startSync(){
     setSyncStatus('connecting');
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
-      STATE = snap.exists() ? (snap.data() || {}) : {};
+      const raw = snap.exists() ? (snap.data() || {}) : {};
+      let needsCleanup = false;
+      // Auto-clean stale penWinner: remove from any pred where score isn't a draw
+      Object.keys(raw).forEach(matchId=>{
+        const match = raw[matchId];
+        if(!match?.preds) return;
+        Object.keys(match.preds).forEach(name=>{
+          const pred = match.preds[name];
+          if(pred?.penWinner && parseInt(pred.h) !== parseInt(pred.a)){
+            delete pred.penWinner;
+            needsCleanup = true;
+          }
+        });
+        if(match?.actual?.penWinner && parseInt(match.actual.h) !== parseInt(match.actual.a)){
+          delete match.actual.penWinner;
+          needsCleanup = true;
+        }
+      });
+      STATE = raw;
+      // Write cleaned data back to Firebase so it's permanently fixed
+      if(needsCleanup){
+        const db = window._db;
+        const ref = window._doc(db, 'wc2026', 'matches');
+        window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: false }).catch(console.error);
+      }
       setSyncStatus('live');
       renderAll();
     }, err=>{
@@ -836,12 +860,17 @@ async function persistState(matchId){
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
     if(matchId){
-      // setDoc with merge:true replaces the top-level field [matchId] entirely
-      // while leaving all other match fields untouched
-      const payload = { [matchId]: JSON.parse(JSON.stringify(STATE[matchId] ?? null)) };
-      await window._setDoc(ref, payload, { merge: true });
+      const data = JSON.parse(JSON.stringify(STATE[matchId] ?? null));
+      try {
+        // updateDoc replaces only [matchId] field, leaves all others untouched
+        await window._updateDoc(ref, { [matchId]: data });
+      } catch(e){
+        // Doc doesn't exist yet — create it
+        await window._setDoc(ref, { [matchId]: data });
+      }
     } else {
-      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
+      // Full overwrite (ESPN sync) — replace entire document
+      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)));
     }
     setSyncStatus('live');
   } catch(e){
@@ -1112,7 +1141,7 @@ function openModal(id){
 
   if(locked && currentUser!==ADMIN){
     let lockMsg = myPred.h!=='' ? `Your prediction: ${myPred.h} - ${myPred.a}` : 'No prediction entered before kickoff';
-    if(myPred.penWinner) lockMsg += ` · pens: ${myPred.penWinner==='home'?m.home:m.away}`;
+    if(myPred.penWinner && parseInt(myPred.h)===parseInt(myPred.a)) lockMsg += ` · pens: ${myPred.penWinner==='home'?m.home:m.away}`;
     myPredSection.innerHTML=`<div class="pred-input-locked">🔒 ${lockMsg}</div>`;
   } else {
     const hasPred = myPred.h!=='' && myPred.a!=='';
@@ -1163,7 +1192,7 @@ function openModal(id){
       const pred=ms.preds?.[name]||{h:'',a:''};
       const pts=calcPoints(ms.actual, pred, id);
       const cls=pts>=3?'exact':pts===1||pts===2?'result':pts===0?'wrong':'';
-      const penInfo = pred.penWinner&&ko
+      const penInfo = pred.penWinner && ko && parseInt(pred.h)===parseInt(pred.a)
         ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">pens: ${pred.penWinner==='home'?m.home:m.away}</span>` : '';
       return `<div class="pred-display-row ${cls}" style="flex-direction:column;gap:6px;align-items:flex-start">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
@@ -1198,7 +1227,7 @@ function openModal(id){
       const pts=calcPoints(ms.actual, pred, id);
       const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
       const scoreStr=pred?`${pred.h} - ${pred.a}`:'No prediction';
-      const penStr=pred?.penWinner&&ko?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
+      const penStr=pred?.penWinner&&ko&&parseInt(pred.h)===parseInt(pred.a)?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
       const ptsStr=pts!==null?` · ${pts}pt${pts!==1?'s':''}`:' · pending';
       return `<div class="pred-display-row ${cls}">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
