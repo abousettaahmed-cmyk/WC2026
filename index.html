@@ -57,7 +57,7 @@ window.dispatchEvent(new Event('firebase-ready'));
   --r:10px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--dark);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;}
+body{background:var(--dark);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;-webkit-tap-highlight-color:transparent;}
 
 /* ── Setup screen ── */
 #setup-screen{
@@ -171,10 +171,11 @@ header{
 .group-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
 .group-title{background:var(--green);padding:9px 14px;font-family:'Bebas Neue',sans-serif;
   font-size:16px;letter-spacing:2px;color:var(--gold2);display:flex;justify-content:space-between;align-items:center;}
-.match-item{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .15s;}
+.match-item{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .15s;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
 .match-item:last-child{border-bottom:none;}
 .match-item:hover{background:rgba(255,255,255,.04);}
 .match-item.my-pred{border-left:3px solid var(--gold);}
+.match-item:active{background:rgba(255,255,255,.07);}
 .match-meta{font-size:11px;color:var(--muted);margin-bottom:4px;}
 .match-teams{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;}
 .match-teams .vs{color:var(--muted);font-size:10px;}
@@ -187,14 +188,17 @@ header{
 .pred-chip.result{background:rgba(77,184,122,.2);color:var(--result);}
 .pred-chip.wrong{background:rgba(192,57,43,.15);color:#e07070;}
 .pred-chip.mine{outline:1px solid var(--gold);}
+.pred-chip.ready{background:rgba(77,184,122,.15);color:var(--result);}
+.pred-chip.mine-hidden{background:rgba(77,184,122,.1);color:var(--result);}
 
 /* ── Knockout ── */
 .ko-section{margin-bottom:6px;}
 .ko-stage-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);
   text-transform:uppercase;background:rgba(201,168,76,.08);padding:5px 14px;border-radius:6px 6px 0 0;}
-.ko-card{background:var(--card);border:1px solid var(--line);border-top:none;cursor:pointer;transition:border-color .15s;}
+.ko-card{background:var(--card);border:1px solid var(--line);border-top:none;cursor:pointer;transition:border-color .15s;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
 .ko-card:last-child{border-radius:0 0 var(--r) var(--r);}
 .ko-card:hover{border-color:var(--gold);}
+.ko-card:active{border-color:var(--gold);background:rgba(255,255,255,.03);}
 .ko-match-row{display:flex;align-items:center;padding:10px 14px;gap:8px;}
 .ko-team{flex:1;font-weight:600;font-size:13px;}
 .ko-vs{color:var(--muted);font-size:11px;}
@@ -286,76 +290,42 @@ header{
   opacity:.4;cursor:not-allowed;
 }
 
-/* ── Penalty buttons ── */
+
+/* ── Bonuses page ── */
+.bonus-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:16px;}
+.bonus-card-header{background:var(--green);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.bonus-card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--gold2);}
+.bonus-pts-badge{background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;color:var(--gold2);}
+.bonus-my-pick{padding:14px 16px;border-bottom:1px solid var(--line);}
+.bonus-my-pick label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:8px;}
+.bonus-input-row{display:flex;gap:8px;align-items:center;}
+.bonus-input-row input{flex:1;background:var(--dark);border:1px solid var(--line);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;border-radius:8px;padding:10px 12px;outline:none;transition:border-color .15s;}
+.bonus-input-row input:focus{border-color:var(--gold);}
+.bonus-input-row input::placeholder{color:var(--muted);}
+.bonus-input-row input:disabled{opacity:.5;cursor:not-allowed;}
+.bonus-save-btn{background:var(--gold);color:var(--dark);border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+.bonus-save-btn:active{opacity:.8;}
+.bonus-winner-banner{background:rgba(201,168,76,.1);border-bottom:1px solid rgba(201,168,76,.2);padding:12px 16px;text-align:center;}
+.bonus-winner-name{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold2);letter-spacing:2px;}
+.bonus-winner-label{font-size:11px;color:var(--muted);margin-top:2px;}
+.bonus-picks-list{padding:0;}
+.bonus-pick-row{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--line);gap:10px;}
+.bonus-pick-row:last-child{border-bottom:none;}
+.bonus-pick-name{font-size:13px;font-weight:600;color:var(--muted);width:90px;flex-shrink:0;}
+.bonus-pick-value{flex:1;font-size:14px;font-weight:700;color:var(--text);}
+.bonus-pick-value.empty{color:var(--muted);font-weight:400;font-style:italic;}
+.bonus-correct{font-size:13px;color:var(--exact);font-weight:700;}
+.pen-section{margin-top:10px;padding:10px 12px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15);border-radius:8px;}
+.pen-section .section-label{margin-bottom:8px;}
+.pen-btns{display:flex;gap:8px;}
 .pen-btn{
-  background:var(--line);border:1px solid var(--line);border-radius:8px;
+  flex:1;background:var(--line);border:1px solid var(--line);border-radius:8px;
   color:var(--muted);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
-  padding:10px 8px;cursor:pointer;transition:all .2s;text-align:center;
+  padding:9px 8px;cursor:pointer;transition:all .2s;text-align:center;
 }
 .pen-btn:hover{border-color:var(--gold);color:var(--gold2);}
 .pen-btn.selected{background:rgba(201,168,76,.2);border-color:var(--gold);color:var(--gold2);}
-.pen-chip{
-  font-size:10px;padding:1px 6px;border-radius:10px;
-  background:rgba(201,168,76,.15);color:var(--gold);font-weight:700;margin-left:3px;
-}
-
-/* ── Golden Boot page ── */
-.boot-header{
-  display:flex;align-items:center;gap:10px;margin-bottom:20px;
-}
-.boot-header h2{
-  font-family:'Bebas Neue',sans-serif;font-size:24px;
-  letter-spacing:2px;color:var(--gold2);
-}
-.boot-card{
-  background:var(--card);border:1px solid var(--line);
-  border-radius:var(--r);overflow:hidden;margin-bottom:14px;
-}
-.boot-card-header{
-  background:var(--green);padding:10px 16px;
-  font-family:'Bebas Neue',sans-serif;font-size:16px;
-  letter-spacing:2px;color:var(--gold2);
-}
-.boot-pick-row{
-  display:flex;align-items:center;padding:12px 16px;
-  border-bottom:1px solid var(--line);gap:10px;
-}
-.boot-pick-row:last-child{border-bottom:none;}
-.boot-pick-name{font-size:13px;font-weight:600;color:var(--muted);width:80px;flex-shrink:0;}
-.boot-pick-player{
-  flex:1;font-size:14px;font-weight:700;color:var(--text);
-}
-.boot-pick-player.empty{color:var(--muted);font-weight:400;font-style:italic;}
-.boot-pts{
-  font-family:'Bebas Neue',sans-serif;font-size:22px;
-  color:var(--gold2);min-width:30px;text-align:right;
-}
-.boot-input-wrap{
-  display:flex;gap:8px;align-items:center;padding:14px 16px;
-}
-.boot-input-wrap input{
-  flex:1;background:var(--dark);border:1px solid var(--line);
-  color:var(--text);font-family:'Inter',sans-serif;font-size:14px;
-  border-radius:8px;padding:10px 12px;outline:none;
-  transition:border-color .15s;
-}
-.boot-input-wrap input:focus{border-color:var(--gold);}
-.boot-input-wrap input::placeholder{color:var(--muted);}
-.boot-save-btn{
-  background:var(--gold);color:var(--dark);border:none;
-  font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
-  padding:10px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;
-}
-.boot-winner-wrap{
-  background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);
-  border-radius:var(--r);padding:16px;margin-bottom:14px;text-align:center;
-}
-.boot-winner-name{
-  font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold2);
-  letter-spacing:2px;
-}
-.boot-winner-label{font-size:11px;color:var(--muted);margin-top:4px;}
-
+.pen-chip{font-size:10px;padding:1px 5px;border-radius:10px;background:rgba(201,168,76,.15);color:var(--gold);font-weight:700;margin-left:2px;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:var(--dark);}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
@@ -383,8 +353,10 @@ header{
 .today-match-card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   overflow:hidden;margin-bottom:12px;cursor:pointer;transition:border-color .2s;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
 }
 .today-match-card:hover{border-color:var(--gold);}
+.today-match-card:active{border-color:var(--gold);background:rgba(255,255,255,.03);}
 .today-match-card.live-now{border-color:var(--result);box-shadow:0 0 12px rgba(77,184,122,.2);}
 .today-match-card.dimmed{ opacity:.65; }
 .today-match-card.dimmed .today-score{ color:var(--muted); background:var(--line); }
@@ -532,7 +504,7 @@ header{
     <button class="tab-btn" onclick="showPage('group-K',this)">Grp K</button>
     <button class="tab-btn" onclick="showPage('group-L',this)">Grp L</button>
     <button class="tab-btn" onclick="showPage('knockout',this)">⚡ KO</button>
-    <button class="tab-btn" onclick="showPage('goldenboot',this)">👟 Boot</button>
+    <button class="tab-btn" onclick="showPage('bonuses',this)">🎯 Bonuses</button>
   </div>
 
   <div id="page-today"       class="page active"></div>
@@ -550,7 +522,7 @@ header{
   <div id="page-group-K"    class="page"></div>
   <div id="page-group-L"    class="page"></div>
   <div id="page-knockout"   class="page"></div>
-  <div id="page-goldenboot" class="page"></div>
+  <div id="page-bonuses"   class="page"></div>
 </div>
 
 <!-- Modal -->
@@ -571,16 +543,7 @@ header{
             <input type="number" id="actual-h" min="0" max="20" placeholder="0"/>
             <span class="dash">—</span>
             <input type="number" id="actual-a" min="0" max="20" placeholder="0"/>
-            <span style="margin-left:8px;color:var(--muted);font-size:11px;">90 min score</span>
-          </div>
-        </div>
-        <!-- Admin: penalty winner (knockout only, shown when draw) -->
-        <div id="actual-pen-section" style="display:none;margin-top:10px">
-          <div class="section-label">Penalty Winner</div>
-          <div class="actual-wrap" style="display:flex;gap:10px;align-items:center">
-            <button id="actual-pen-home" class="pen-btn" onclick="setAdminPen('home')" style="flex:1"></button>
-            <span style="color:var(--muted);font-size:12px;">or</span>
-            <button id="actual-pen-away" class="pen-btn" onclick="setAdminPen('away')" style="flex:1"></button>
+            <span style="margin-left:8px;color:var(--muted);font-size:11px;">official result</span>
           </div>
         </div>
       </div>
@@ -594,13 +557,15 @@ header{
           <input type="number" id="my-pred-a" min="0" max="20" placeholder="0"/>
         </div>
       </div>
-      <!-- My penalty pick (knockout only, shown when I predict a draw) -->
-      <div id="my-pen-section" style="display:none;margin-top:10px">
-        <div class="section-label">If Draw — Who Wins Penalties?</div>
-        <div style="display:flex;gap:10px">
-          <button id="my-pen-home" class="pen-btn" onclick="setMyPen('home')" style="flex:1"></button>
-          <button id="my-pen-away" class="pen-btn" onclick="setMyPen('away')" style="flex:1"></button>
+
+      <!-- Penalty winner (knockout matches only) -->
+      <div id="pen-section" class="pen-section" style="display:none">
+        <div class="section-label">Who wins on penalties?</div>
+        <div class="pen-btns">
+          <button id="pen-btn-home" class="pen-btn" onclick="togglePen('home')">—</button>
+          <button id="pen-btn-away" class="pen-btn" onclick="togglePen('away')">—</button>
         </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">Tap to select · tap again to deselect · shown always in knockout</div>
       </div>
 
       <!-- Everyone's predictions -->
@@ -647,7 +612,7 @@ const GROUP_MATCHES = [
   {id:'I2',g:'I',home:'Iraq',          away:'Norway',         date:'Wed Jun 17',time:'01:00 Cairo',kickoff:'2026-06-16T22:00:00Z',venue:'Boston'},
   {id:'J1',g:'J',home:'Argentina',     away:'Algeria',        date:'Wed Jun 17',time:'04:00 Cairo',kickoff:'2026-06-17T01:00:00Z',venue:'Kansas City'},
   {id:'J2',g:'J',home:'Austria',       away:'Jordan',         date:'Wed Jun 17',time:'07:00 Cairo',kickoff:'2026-06-17T04:00:00Z',venue:'San Francisco'},
-  {id:'K1',g:'K',home:'Portugal',      away:'Croatia',       date:'Wed Jun 17',time:'20:00 Cairo',kickoff:'2026-06-17T17:00:00Z',venue:'Houston'},
+  {id:'K1',g:'K',home:'Portugal',      away:'DR Congo',       date:'Wed Jun 17',time:'20:00 Cairo',kickoff:'2026-06-17T17:00:00Z',venue:'Houston'},
   {id:'L1',g:'L',home:'England',       away:'Croatia',        date:'Wed Jun 17',time:'23:00 Cairo',kickoff:'2026-06-17T20:00:00Z',venue:'Dallas'},
   {id:'L2',g:'L',home:'Ghana',         away:'Panama',         date:'Thu Jun 18',time:'02:00 Cairo',kickoff:'2026-06-17T23:00:00Z',venue:'Toronto'},
   {id:'K2',g:'K',home:'Uzbekistan',    away:'Colombia',       date:'Thu Jun 18',time:'05:00 Cairo',kickoff:'2026-06-18T02:00:00Z',venue:'Mexico City'},
@@ -705,19 +670,19 @@ const KNOCKOUT_MATCHES = [
   {id:'M73', stage:'Round of 32',  home:'South Africa',  away:'Canada',         date:'Sun Jun 28',time:'23:00 Cairo',kickoff:'2026-06-28T20:00:00Z',venue:'Los Angeles (SoFi)'},
   {id:'M76', stage:'Round of 32',  home:'Brazil',        away:'Japan',          date:'Mon Jun 29',time:'20:00 Cairo',kickoff:'2026-06-29T17:00:00Z',venue:'Houston (NRG)'},
   {id:'M74', stage:'Round of 32',  home:'Germany',       away:'Paraguay',       date:'Tue Jun 30',time:'00:30 Cairo',kickoff:'2026-06-29T21:30:00Z',venue:'Boston (Gillette)'},
-  {id:'M75', stage:'Round of 32',  home:'Netherlands',   away:'Morocco',        date:'Tue Jun 30',time:'05:00 Cairo',kickoff:'2026-06-30T02:00:00Z',venue:'Monterrey'},
-  {id:'M78', stage:'Round of 32',  home:'Ivory Coast',   away:'Norway',         date:'Tue Jun 30',time:'21:00 Cairo',kickoff:'2026-06-30T18:00:00Z',venue:'Dallas (AT&T)'},
-  {id:'M77', stage:'Round of 32',  home:'France',        away:'Sweden',         date:'Wed Jul 1', time:'01:00 Cairo',kickoff:'2026-06-30T22:00:00Z',venue:'New York/NJ (MetLife)'},
-  {id:'M79', stage:'Round of 32',  home:'Mexico',        away:'Ecuador',        date:'Wed Jul 1', time:'05:00 Cairo',kickoff:'2026-07-01T02:00:00Z',venue:'Mexico City (Azteca)'},
-  {id:'M80', stage:'Round of 32',  home:'England',       away:'DR Congo',        date:'Wed Jul 1', time:'20:00 Cairo',kickoff:'2026-07-01T17:00:00Z',venue:'Atlanta (Mercedes-Benz)'},
-  {id:'M82', stage:'Round of 32',  home:'USA',           away:'Bosnia & Herz.', date:'Thu Jul 2', time:'00:00 Cairo',kickoff:'2026-07-01T21:00:00Z',venue:'San Francisco'},
-  {id:'M81', stage:'Round of 32',  home:'Belgium',       away:'Senegal',        date:'Thu Jul 2', time:'04:00 Cairo',kickoff:'2026-07-02T01:00:00Z',venue:'Seattle (Lumen Field)'},
-  {id:'M84', stage:'Round of 32',  home:'Portugal',      away:'Croatia',       date:'Thu Jul 2', time:'22:00 Cairo',kickoff:'2026-07-02T19:00:00Z',venue:'Los Angeles (SoFi)'},
-  {id:'M83', stage:'Round of 32',  home:'Colombia',      away:'Ghana',          date:'Fri Jul 3', time:'03:30 Cairo',kickoff:'2026-07-03T00:30:00Z',venue:'Kansas City (Arrowhead)'},
-  {id:'M85', stage:'Round of 32',  home:'Argentina',     away:'Cabo Verde',     date:'Fri Jul 3', time:'02:00 Cairo',kickoff:'2026-07-03T23:00:00Z',venue:'Miami (Hard Rock)'},
-  {id:'M88', stage:'Round of 32',  home:'Australia',     away:'Egypt',          date:'Fri Jul 3', time:'22:00 Cairo',kickoff:'2026-07-03T19:00:00Z',venue:'Dallas (AT&T)'},
-  {id:'M86', stage:'Round of 32',  home:'Spain',         away:'Austria',        date:'Sat Jul 4', time:'02:00 Cairo',kickoff:'2026-07-03T23:00:00Z',venue:'Los Angeles (SoFi)'},
-  {id:'M87', stage:'Round of 32',  home:'Switzerland',   away:'Algeria',        date:'Sat Jul 4', time:'06:00 Cairo',kickoff:'2026-07-04T03:00:00Z',venue:'Vancouver (BC Place)'},
+  {id:'M75', stage:'Round of 32',  home:'Netherlands',   away:'Morocco',        date:'Tue Jun 30',time:'04:00 Cairo',kickoff:'2026-06-30T01:00:00Z',venue:'Monterrey (BBVA)'},
+  {id:'M78', stage:'Round of 32',  home:'Ivory Coast',   away:'Norway',         date:'Tue Jun 30',time:'20:00 Cairo',kickoff:'2026-06-30T17:00:00Z',venue:'Dallas (AT&T)'},
+  {id:'M77', stage:'Round of 32',  home:'France',        away:'Sweden',         date:'Wed Jul 1', time:'00:00 Cairo',kickoff:'2026-06-30T21:00:00Z',venue:'New York/NJ (MetLife)'},
+  {id:'M79', stage:'Round of 32',  home:'Mexico',        away:'Ecuador',        date:'Wed Jul 1', time:'04:00 Cairo',kickoff:'2026-07-01T01:00:00Z',venue:'Mexico City (Azteca)'},
+  {id:'M80', stage:'Round of 32',  home:'England',       away:'DR Congo',       date:'Wed Jul 1', time:'19:00 Cairo',kickoff:'2026-07-01T16:00:00Z',venue:'Atlanta (Mercedes-Benz)'},
+  {id:'M82', stage:'Round of 32',  home:'Belgium',       away:'Senegal',        date:'Wed Jul 1', time:'23:00 Cairo',kickoff:'2026-07-01T20:00:00Z',venue:'Seattle (Lumen Field)'},
+  {id:'M81', stage:'Round of 32',  home:'USA',           away:'Bosnia & Herz.', date:'Thu Jul 2', time:'03:00 Cairo',kickoff:'2026-07-02T00:00:00Z',venue:'San Francisco (Levis)'},
+  {id:'M84', stage:'Round of 32',  home:'Spain',         away:'Austria',        date:'Thu Jul 2', time:'22:00 Cairo',kickoff:'2026-07-02T19:00:00Z',venue:'Los Angeles (SoFi)'},
+  {id:'M83', stage:'Round of 32',  home:'Portugal',      away:'Croatia',        date:'Fri Jul 3', time:'02:00 Cairo',kickoff:'2026-07-02T23:00:00Z',venue:'Toronto (BMO Field)'},
+  {id:'M85', stage:'Round of 32',  home:'Switzerland',   away:'Algeria',        date:'Fri Jul 3', time:'06:00 Cairo',kickoff:'2026-07-03T03:00:00Z',venue:'Vancouver (BC Place)'},
+  {id:'M88', stage:'Round of 32',  home:'Australia',     away:'Egypt',          date:'Fri Jul 3', time:'21:00 Cairo',kickoff:'2026-07-03T18:00:00Z',venue:'Dallas (AT&T)'},
+  {id:'M86', stage:'Round of 32',  home:'Argentina',     away:'Cabo Verde',     date:'Sat Jul 4', time:'01:00 Cairo',kickoff:'2026-07-03T22:00:00Z',venue:'Miami (Hard Rock)'},
+  {id:'M87', stage:'Round of 32',  home:'Colombia',      away:'Ghana',          date:'Sat Jul 4', time:'04:30 Cairo',kickoff:'2026-07-04T01:30:00Z',venue:'Kansas City (Arrowhead)'},
   {id:'M90', stage:'Round of 16',  home:'W M73',        away:'W M75',              date:'Sat Jul 4', time:'20:00 Cairo',kickoff:'2026-07-04T17:00:00Z',venue:'Houston'},
   {id:'M89', stage:'Round of 16',  home:'W M74',        away:'W M77',              date:'Sun Jul 5', time:'00:00 Cairo',kickoff:'2026-07-04T21:00:00Z',venue:'Philadelphia'},
   {id:'M91', stage:'Round of 16',  home:'W M76',        away:'W M78',              date:'Sun Jul 5', time:'23:00 Cairo',kickoff:'2026-07-05T20:00:00Z',venue:'New York/NJ'},
@@ -737,6 +702,30 @@ const KNOCKOUT_MATCHES = [
 ];
 
 const ALL_MATCHES = [...GROUP_MATCHES, ...KNOCKOUT_MATCHES];
+
+// ── Knockout detection ──
+const KNOCKOUT_IDS = new Set(['M73','M74','M75','M76','M77','M78','M79','M80',
+  'M81','M82','M83','M84','M85','M86','M87','M88','M89','M90','M91','M92',
+  'M93','M94','M95','M96','M97','M98','M99','M100','M101','M102','M103','M104']);
+function isKnockout(id){ return KNOCKOUT_IDS.has(id); }
+
+// ── Penalty state ──
+let currentPenPick = null;
+function togglePen(side){
+  if(currentPenPick === side){
+    currentPenPick = null; // deselect
+  } else {
+    currentPenPick = side;
+  }
+  renderPenButtons();
+}
+function renderPenButtons(){
+  const hBtn = document.getElementById('pen-btn-home');
+  const aBtn = document.getElementById('pen-btn-away');
+  if(!hBtn||!aBtn) return;
+  hBtn.classList.toggle('selected', currentPenPick==='home');
+  aBtn.classList.toggle('selected', currentPenPick==='away');
+}
 
 // ══════════════════════════════════════════════════
 //  LOCK LOGIC
@@ -767,14 +756,7 @@ let unsubscribe = null;
 // ══════════════════════════════════════════════════
 //  POINTS
 // ══════════════════════════════════════════════════
-const KNOCKOUT_IDS = new Set(['M73','M74','M75','M76','M77','M78','M79','M80',
-  'M81','M82','M83','M84','M85','M86','M87','M88','M89','M90','M91','M92',
-  'M93','M94','M95','M96','M97','M98','M99','M100','M101','M102','M103','M104']);
-
-function isKnockout(matchId){ return KNOCKOUT_IDS.has(matchId); }
-
 function calcResult(h,a){ return h>a?'H':a>h?'A':'D'; }
-
 function calcPoints(actual, pred, matchId){
   if(!actual || pred?.h==='' || pred?.h===undefined) return null;
   const aH=parseInt(actual.h), aA=parseInt(actual.a);
@@ -783,17 +765,19 @@ function calcPoints(actual, pred, matchId){
   let pts = 0;
   if(aH===pH && aA===pA) pts=3;
   else if(calcResult(aH,aA)===calcResult(pH,pA)) pts=1;
-  // Knockout penalty bonus: +1 if draw at 90min and correct pen pick
-  if(pts>0 && isKnockout(matchId) && aH===aA && actual.penWinner && pred.penWinner){
+  // Knockout: +1 bonus for correct pen pick (always counts if both have a pick)
+  if(pts>0 && matchId && isKnockout(matchId) && actual.penWinner && pred.penWinner){
     if(actual.penWinner===pred.penWinner) pts+=1;
   }
   return pts;
 }
 function leaderboardData(){
-  const gb = STATE['__goldenboot__'] || {};
-  const actualWinner = gb.actual || '';
+  const bonuses = STATE['__bonuses__'] || {};
+  const actualScorer = (bonuses.scorer?.actual || '').trim().toLowerCase();
+  const actualWinner = (bonuses.winner?.actual || '').trim().toLowerCase();
+
   return FRIENDS.map(name=>{
-    let total=0,exact=0,result=0;
+    let total=0,exact=0,result=0,bonusPts=0;
     ALL_MATCHES.forEach(m=>{
       const ms=STATE[m.id];
       if(!ms?.actual || !ms.preds?.[name]) return;
@@ -803,11 +787,13 @@ function leaderboardData(){
       if(pts>=3) exact++;
       else if(pts===1||pts===2) result++;
     });
-    // Golden boot: +5 if correct
-    const myPick=(gb.picks?.[name]||'').trim().toLowerCase();
-    const bootCorrect=actualWinner&&myPick&&myPick===actualWinner.trim().toLowerCase();
-    if(bootCorrect) total+=5;
-    return {name,total,exact,result,bootCorrect,myPick:gb.picks?.[name]||''};
+    // Top scorer bonus: +5
+    const myScorer = (bonuses.scorer?.picks?.[name] || '').trim().toLowerCase();
+    if(actualScorer && myScorer && myScorer===actualScorer){ bonusPts+=5; total+=5; }
+    // WC winner bonus: +5
+    const myWinner = (bonuses.winner?.picks?.[name] || '').trim().toLowerCase();
+    if(actualWinner && myWinner && myWinner===actualWinner){ bonusPts+=5; total+=5; }
+    return {name,total,exact,result,bonusPts};
   }).sort((a,b)=>{
     if(b.total!==a.total) return b.total-a.total;
     if(b.exact!==a.exact) return b.exact-a.exact;
@@ -949,16 +935,19 @@ function switchUser(){
 // ══════════════════════════════════════════════════
 function predChips(matchId){
   const ms = STATE[matchId];
+  const m = ALL_MATCHES.find(x=>x.id===matchId);
+  const locked = m ? isLocked(m) : true;
   return FRIENDS.map(name=>{
     const pred = ms?.preds?.[name];
     const isMe = name===currentUser;
     if(!pred) return `<span class="pred-chip${isMe?' mine':''}">${name.slice(0,3)} ?</span>`;
+    // Hide other people's scores until match kicks off
+    if(!locked && !isMe){
+      return `<span class="pred-chip mine-hidden" title="Hidden until kickoff">${name.slice(0,3)} ✓</span>`;
+    }
     const pts = calcPoints(ms?.actual, pred, matchId);
-    const cls = pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
-    const penChip = pred.penWinner
-      ? `<span class="pen-chip">${pred.penWinner==='home'?pred.h?.toString().slice(0,3)||'?':'Away'} pens</span>`
-      : '';
-    return `<span class="pred-chip ${cls}${isMe?' mine':''}">${name.slice(0,3)} ${pred.h}-${pred.a}${penChip}</span>`;
+    const cls = pts===3?'exact':pts===1?'result':pts===0?'wrong':'';
+    return `<span class="pred-chip ${cls}${isMe?' mine':''}">${name.slice(0,3)} ${pred.h}-${pred.a}</span>`;
   }).join('');
 }
 
@@ -984,6 +973,7 @@ function renderLeaderboard(){
           <div class="lb-breakdown">
             <span class="badge exact">🎯 ${p.exact}</span>
             <span class="badge result">✅ ${p.result}</span>
+            ${p.bonusPts>0?`<span class="badge exact">⭐ +${p.bonusPts}</span>`:''}
           </div>
           <div><div class="lb-pts">${p.total}</div><div class="lb-pts-label">pts</div></div>
         </div>`).join('')}
@@ -1071,57 +1061,19 @@ function renderKnockout(){
 // ══════════════════════════════════════════════════
 //  MODAL
 // ══════════════════════════════════════════════════
-let currentPenPick = null; // 'home' or 'away'
-let adminPenPick = null;
-
-function setMyPen(side){
-  currentPenPick = side;
-  document.getElementById('my-pen-home').classList.toggle('selected', side==='home');
-  document.getElementById('my-pen-away').classList.toggle('selected', side==='away');
-}
-function setAdminPen(side){
-  adminPenPick = side;
-  document.getElementById('actual-pen-home').classList.toggle('selected', side==='home');
-  document.getElementById('actual-pen-away').classList.toggle('selected', side==='away');
-}
-
-function updatePenSections(m, ms){
-  const ko = isKnockout(m.id);
-  // My pen section: show if knockout and I predict a draw
-  const myPenSec = document.getElementById('my-pen-section');
-  if(myPenSec) myPenSec.style.display = ko ? 'block' : 'none';
-  if(ko && myPenSec){
-    const myPred = ms.preds?.[currentUser] || {};
-    document.getElementById('my-pen-home').textContent = m.home;
-    document.getElementById('my-pen-away').textContent = m.away;
-    currentPenPick = myPred.penWinner || null;
-    setMyPen(currentPenPick);
-  }
-  // Admin pen section
-  const adminPenSec = document.getElementById('actual-pen-section');
-  if(adminPenSec && currentUser===ADMIN){
-    adminPenSec.style.display = ko ? 'block' : 'none';
-    if(ko){
-      document.getElementById('actual-pen-home').textContent = m.home;
-      document.getElementById('actual-pen-away').textContent = m.away;
-      adminPenPick = ms.actual?.penWinner || null;
-      setAdminPen(adminPenPick);
-    }
-  }
-}
-
 function openModal(id){
   currentMatchId=id;
   const m=ALL_MATCHES.find(x=>x.id===id);
   const ms=STATE[id]||{actual:null,preds:{}};
   const locked=isLocked(m);
+  const ko=isKnockout(id);
 
   document.getElementById('modal-title').textContent=id;
   document.getElementById('modal-match-name').innerHTML=
     `${m.home} <span>vs</span> ${m.away}<br>
      <span style="font-size:12px;color:var(--muted)">${m.date} · ${m.time} · ${m.venue}</span>`;
 
-  // Admin score inputs
+  // Admin: actual score inputs + admin pen pick
   const actualSec=document.getElementById('actual-section');
   actualSec.style.display = currentUser===ADMIN ? 'block' : 'none';
   if(currentUser===ADMIN){
@@ -1135,25 +1087,48 @@ function openModal(id){
     aInput.disabled = false;
   }
 
-  // My prediction
+  // My prediction — locked or open
   const myPredSection = document.querySelector('.my-pred-section');
   const myPred=ms.preds?.[currentUser]||{h:'',a:''};
+
   if(locked && currentUser!==ADMIN){
     let lockMsg = myPred.h!=='' ? `Your prediction: ${myPred.h} - ${myPred.a}` : 'No prediction entered before kickoff';
-    if(myPred.penWinner) lockMsg += ` (pens: ${myPred.penWinner==='home'?m.home:m.away})`;
+    if(myPred.penWinner) lockMsg += ` · pens: ${myPred.penWinner==='home'?m.home:m.away}`;
     myPredSection.innerHTML=`<div class="pred-input-locked">🔒 ${lockMsg}</div>`;
   } else {
+    const hasPred = myPred.h!=='' && myPred.a!=='';
     myPredSection.innerHTML=`
       <div class="score-input-wrap">
         <input type="number" id="my-pred-h" min="0" max="20" placeholder="0" value="${myPred.h}"/>
         <span class="dash">-</span>
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value="${myPred.a}"/>
-        <span style="margin-left:8px;color:var(--muted);font-size:11px;">${isKnockout(id)?'90 min score':'your prediction'}</span>
+        ${hasPred ? `<button onclick="clearMyPred()" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:0" title="Clear prediction">×</button>` : ''}
       </div>`;
   }
 
-  // Penalty sections
-  updatePenSections(m, ms);
+  // Penalty winner section — always shown for knockout matches
+  const penSec = document.getElementById('pen-section');
+  if(ko && penSec){
+    penSec.style.display = 'block';
+    document.getElementById('pen-btn-home').textContent = m.home;
+    document.getElementById('pen-btn-away').textContent = m.away;
+    // Load existing pen pick (admin sees actual penWinner, others see their own)
+    if(currentUser===ADMIN){
+      currentPenPick = ms.actual?.penWinner || null;
+    } else {
+      currentPenPick = myPred.penWinner || null;
+    }
+    renderPenButtons();
+    if(locked && currentUser!==ADMIN){
+      // Show read-only after kickoff
+      document.querySelectorAll('.pen-btn').forEach(b=>b.style.pointerEvents='none');
+    } else {
+      document.querySelectorAll('.pen-btn').forEach(b=>b.style.pointerEvents='');
+    }
+  } else if(penSec){
+    penSec.style.display = 'none';
+    currentPenPick = null;
+  }
 
   // Save button
   const saveBtn = document.querySelector('.btn-primary');
@@ -1161,6 +1136,7 @@ function openModal(id){
 
   // Predictions grid
   const grid=document.getElementById('all-preds-grid');
+
   if(currentUser===ADMIN){
     const headerMsg = locked
       ? `<div style="grid-column:1/-1;color:var(--gold);font-size:11px;text-align:center;padding:4px 0 8px">⚙️ Admin — edit any prediction</div>`
@@ -1168,14 +1144,9 @@ function openModal(id){
     grid.innerHTML = headerMsg + FRIENDS.map(name=>{
       const pred=ms.preds?.[name]||{h:'',a:''};
       const pts=calcPoints(ms.actual, pred, id);
-      const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
-      const penInfo = isKnockout(id) ? `
-        <div style="margin-top:6px;display:flex;gap:6px">
-          <button class="pen-btn${pred.penWinner==='home'?' selected':''}" style="flex:1;font-size:11px;padding:5px"
-            onclick="setAdminPlayerPen('${name}','home','${m.home}')">${m.home}</button>
-          <button class="pen-btn${pred.penWinner==='away'?' selected':''}" style="flex:1;font-size:11px;padding:5px"
-            onclick="setAdminPlayerPen('${name}','away','${m.away}')">${m.away}</button>
-        </div>` : '';
+      const cls=pts>=3?'exact':pts===1||pts===2?'result':pts===0?'wrong':'';
+      const penInfo = pred.penWinner&&ko
+        ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">pens: ${pred.penWinner==='home'?m.home:m.away}</span>` : '';
       return `<div class="pred-display-row ${cls}" style="flex-direction:column;gap:6px;align-items:flex-start">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
         <div class="score-input-wrap">
@@ -1187,8 +1158,8 @@ function openModal(id){
             id="admin-pred-${name}-a" value="${pred.a}"
             style="width:44px;height:32px;font-size:15px"/>
           ${pts!==null?`<span style="margin-left:6px;font-size:11px;color:var(--muted)">${pts}pt${pts!==1?'s':''}</span>`:''}
+          ${penInfo}
         </div>
-        ${penInfo}
       </div>`;
     }).join('');
   } else if(!locked){
@@ -1209,7 +1180,7 @@ function openModal(id){
       const pts=calcPoints(ms.actual, pred, id);
       const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
       const scoreStr=pred?`${pred.h} - ${pred.a}`:'No prediction';
-      const penStr=pred?.penWinner?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
+      const penStr=pred?.penWinner&&ko?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
       const ptsStr=pts!==null?` · ${pts}pt${pts!==1?'s':''}`:' · pending';
       return `<div class="pred-display-row ${cls}">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
@@ -1221,31 +1192,18 @@ function openModal(id){
   document.getElementById('overlay').classList.add('open');
 }
 
-// Admin editing individual player pen picks in the grid
-const adminPlayerPens = {};
-function setAdminPlayerPen(name, side, teamName){
-  adminPlayerPens[name] = side;
-  // Update button styles
-  const ms = STATE[currentMatchId]||{actual:null,preds:{}};
-  const pred = ms.preds?.[name]||{};
-  // Re-render just that player's pen buttons via class toggle
-  const allRows = document.querySelectorAll('.pred-display-row');
-  allRows.forEach(row=>{
-    const pname = row.querySelector('.pname')?.textContent?.replace(' (you)','');
-    if(pname===name){
-      row.querySelectorAll('.pen-btn').forEach(btn=>{
-        btn.classList.toggle('selected',
-          (btn.textContent===teamName && side==='home') ||
-          (btn.textContent!==teamName && side==='away') ? false :
-          btn.textContent===teamName
-        );
-      });
-    }
-  });
-}
-
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); currentMatchId=null; }
 function closeModalOnOverlay(e){ if(e.target===document.getElementById('overlay')) closeModal(); }
+
+async function clearMyPred(){
+  if(!currentMatchId) return;
+  if(!STATE[currentMatchId]?.preds?.[currentUser]) return;
+  delete STATE[currentMatchId].preds[currentUser];
+  await persistState(currentMatchId);
+  showToast('🗑️ Prediction cleared');
+  closeModal();
+  renderAll();
+}
 
 async function saveMatch(){
   if(!currentMatchId) return;
@@ -1253,6 +1211,7 @@ async function saveMatch(){
   const locked=isLocked(m);
   const ko=isKnockout(currentMatchId);
 
+  // Non-admin on a locked match — nothing to do
   if(locked && currentUser!==ADMIN){
     closeModal();
     showToast('🔒 Predictions locked at kickoff');
@@ -1262,41 +1221,43 @@ async function saveMatch(){
   if(!STATE[currentMatchId]) STATE[currentMatchId]={actual:null,preds:{}};
   const ms=STATE[currentMatchId];
 
-  // ── Admin: update real score + penalty winner ──
+  // ── Admin: update real score + pen winner ──
   if(currentUser===ADMIN){
     const aH=document.getElementById('actual-h').value.trim();
     const aA=document.getElementById('actual-a').value.trim();
     if(aH!=='' && aA!==''){
       ms.actual={h:parseInt(aH), a:parseInt(aA)};
-      if(ko && adminPenPick) ms.actual.penWinner=adminPenPick;
+      if(ko && currentPenPick) ms.actual.penWinner=currentPenPick;
+      else if(ms.actual) delete ms.actual.penWinner;
     } else if(aH==='' && aA===''){
       ms.actual=null;
     }
 
-    // Admin: save all players' predictions + pen picks
+    // Admin: save all players' predictions
     if(!ms.preds) ms.preds={};
     FRIENDS.forEach(name=>{
       const pH=document.getElementById(`admin-pred-${name}-h`)?.value.trim() ?? '';
       const pA=document.getElementById(`admin-pred-${name}-a`)?.value.trim() ?? '';
       if(pH!=='' && pA!==''){
-        const pen = adminPlayerPens[name] || ms.preds[name]?.penWinner || null;
-        ms.preds[name]={h:pH, a:pA, ...(ko&&pen?{penWinner:pen}:{})};
+        const existing = ms.preds[name] || {};
+        ms.preds[name]={h:pH, a:pA, ...(existing.penWinner?{penWinner:existing.penWinner}:{})};
       }
     });
-    // Clear temp pen picks
-    Object.keys(adminPlayerPens).forEach(k=>delete adminPlayerPens[k]);
   }
 
-  // ── Regular user: save own prediction + pen pick ──
+  // ── Regular user before kickoff: save prediction + pen pick ──
   if(!locked && currentUser!==ADMIN){
     const pH=document.getElementById('my-pred-h')?.value ?? '';
     const pA=document.getElementById('my-pred-a')?.value ?? '';
     if(pH!=='' && pA!==''){
       if(!ms.preds) ms.preds={};
       ms.preds[currentUser]={h:pH, a:pA, ...(ko&&currentPenPick?{penWinner:currentPenPick}:{})};
+    } else if(pH==='' && pA===''){
+      if(ms.preds) delete ms.preds[currentUser];
     }
   }
-  // Admin own prediction with pen
+
+  // Admin's own prediction also saves pen pick
   if(!locked && currentUser===ADMIN){
     const pH=document.getElementById('my-pred-h')?.value ?? '';
     const pA=document.getElementById('my-pred-a')?.value ?? '';
@@ -1496,24 +1457,33 @@ function applyScores(matchList){
 }
 
 async function fetchFromWC26(){
-  // openfootball/worldcup.json — no API key, no CORS, updated daily on GitHub
-  const url = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
-  const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
-  if(!res.ok) throw new Error('openfootball HTTP ' + res.status);
-  const data = await res.json();
+  const res = await fetch('https://worldcup26.ir/get/games',{signal:AbortSignal.timeout(8000)});
+  if(!res.ok) throw new Error('WC26 HTTP '+res.status);
+  const games = await res.json();
 
-  // Structure: { matches: [{team1, team2, score:{ft:[h,a]}, ...}] }
-  console.log('[openfootball] Total matches:', data.matches?.length);
+  // Log raw data so we can see exactly what fields the API uses
+  console.log('[WC26] Raw sample (first 3 games):', JSON.stringify(games.slice(0,3), null, 2));
 
-  return (data.matches || [])
-    .filter(m => m.score?.ft)  // only matches with a final score
-    .map(m => ({
-      home: m.team1 || '',
-      away: m.team2 || '',
-      homeScore: m.score.ft[0],
-      awayScore: m.score.ft[1],
-    }))
-    .filter(m => m.home && m.away);
+  const finished = games.filter(g => {
+    const s = (g.status||'').toLowerCase();
+    return s==='completed'||s==='live'||s==='in_progress'||s==='finished'||s==='ft'||s==='1h'||s==='2h'||s==='ht';
+  });
+
+  console.log(`[WC26] ${games.length} total games, ${finished.length} live/finished`);
+
+  return finished.map(g => {
+    // Try every possible field name combination
+    const home = g.home_team?.name || g.home_team?.en || g.homeTeam?.name ||
+                 g.home?.name || g.home_team || g.home || '';
+    const away = g.away_team?.name || g.away_team?.en || g.awayTeam?.name ||
+                 g.away?.name || g.away_team || g.away || '';
+    const homeScore = parseInt(g.home_score ?? g.home_goals ?? g.homeScore ??
+                               g.score?.home ?? g.goals?.home ?? 0);
+    const awayScore = parseInt(g.away_score ?? g.away_goals ?? g.awayScore ??
+                               g.score?.away ?? g.goals?.away ?? 0);
+    console.log(`[WC26] ${home} ${homeScore}-${awayScore} ${away} [${g.status}]`);
+    return {home, away, homeScore, awayScore};
+  }).filter(g=>g.home&&g.away);
 }
 
 async function fetchFromESPN(){
@@ -1599,11 +1569,10 @@ let autoSyncInterval = null;
 function startAutoSync(){
   if(autoSyncInterval) return;
   autoSyncInterval = setInterval(()=>{
-    if(document.getElementById('page-today')?.classList.contains('active')){
-      const hasLive = getTodayMatches().some(m=>isLiveNow(m));
-      if(hasLive) syncESPN();
-    }
-  }, 2*60*1000);
+    // Auto-sync whenever there are live matches, regardless of active tab
+    const hasLive = getTodayMatches().some(m=>isLiveNow(m));
+    if(hasLive) syncESPN();
+  }, 90*1000); // every 90 seconds during live matches
 }
 
 // ══════════════════════════════════════════════════
@@ -1710,96 +1679,95 @@ self.addEventListener('fetch', e=>{
 // ══════════════════════════════════════════════════
 //  RENDER ALL
 // ══════════════════════════════════════════════════
-// ── Golden Boot ──
-function renderGoldenBoot(){
-  const gb = STATE['__goldenboot__'] || {actual:'', picks:{}};
-  const actualWinner = gb.actual || '';
-  const myPick = gb.picks?.[currentUser] || '';
-  const locked = actualWinner !== ''; // lock picks once winner is declared
+function renderBonuses(){
+  const bonuses = STATE['__bonuses__'] || {};
+  const scorerData = bonuses.scorer || {actual:'', picks:{}};
+  const winnerData = bonuses.winner || {actual:'', picks:{}};
+  const myScorer = scorerData.picks?.[currentUser] || '';
+  const myWinner = winnerData.picks?.[currentUser] || '';
+  const actualScorer = scorerData.actual || '';
+  const actualWinner = winnerData.actual || '';
+  const scorerLocked = actualScorer !== '';
+  const winnerLocked = actualWinner !== '';
 
-  let html = `
-    <div class="boot-header">
-      <div>
-        <h2>👟 Golden Boot</h2>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Pick the tournament top scorer · Correct = 5 bonus pts</div>
+  function buildBonusCard(key, emoji, title, actual, myPick, picksObj, locked, placeholder){
+    const correct = locked && myPick && myPick.trim().toLowerCase()===actual.trim().toLowerCase();
+    return `<div class="bonus-card">
+      <div class="bonus-card-header">
+        <div class="bonus-card-title">${emoji} ${title}</div>
+        <div class="bonus-pts-badge">⭐ 5 pts if correct</div>
       </div>
-    </div>`;
-
-  // Winner declared banner
-  if(actualWinner){
-    html += `<div class="boot-winner-wrap">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">🏆 GOLDEN BOOT WINNER</div>
-      <div class="boot-winner-name">${actualWinner}</div>
+      ${actual ? `<div class="bonus-winner-banner">
+        <div class="bonus-winner-label">ACTUAL ${title.toUpperCase()}</div>
+        <div class="bonus-winner-name">${actual}</div>
+      </div>` : ''}
+      ${currentUser===ADMIN ? `<div class="bonus-my-pick" style="background:rgba(201,168,76,.05)">
+        <label>⚙️ Set Actual ${title} (Admin)</label>
+        <div class="bonus-input-row">
+          <input type="text" id="bonus-actual-${key}" placeholder="${placeholder}" value="${actual}"/>
+          <button class="bonus-save-btn" onclick="saveBonusActual('${key}')">Save</button>
+        </div>
+      </div>` : ''}
+      <div class="bonus-my-pick">
+        <label>My Pick</label>
+        <div class="bonus-input-row">
+          ${locked && currentUser!==ADMIN
+            ? `<div style="font-size:15px;font-weight:700;color:${correct?'var(--exact)':'var(--text)'}">
+                ${myPick||'<span style="color:var(--muted);font-style:italic;font-weight:400">No pick entered</span>'}
+                ${correct?'<span style="color:var(--exact);font-size:12px"> ✅ +5 pts!</span>':''}
+               </div>`
+            : `<input type="text" id="bonus-my-${key}" placeholder="${placeholder}" value="${myPick}" ${locked&&currentUser!==ADMIN?'disabled':''}/>
+               <button class="bonus-save-btn" onclick="saveMyBonus('${key}')">Save</button>`
+          }
+        </div>
+        ${!locked&&!scorerLocked?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Picks are visible to everyone · lock once declared</div>`:''}
+      </div>
+      <div class="bonus-picks-list">
+        ${FRIENDS.map(name=>{
+          const pick = picksObj?.[name] || '';
+          const isMe = name===currentUser;
+          const isCorrect = locked && pick && pick.trim().toLowerCase()===actual.trim().toLowerCase();
+          return `<div class="bonus-pick-row">
+            <div class="bonus-pick-name">${name}${isMe?' 👈':''}</div>
+            <div class="bonus-pick-value ${pick?'':'empty'}">${pick||'No pick yet'}</div>
+            ${isCorrect?`<div class="bonus-correct">+5 ✅</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
     </div>`;
   }
 
-  // Admin: set actual winner
-  if(currentUser===ADMIN){
-    html += `<div class="boot-card" style="margin-bottom:14px">
-      <div class="boot-card-header">⚙️ Admin — Set Winner</div>
-      <div class="boot-input-wrap">
-        <input type="text" id="boot-actual-input" placeholder="Enter player name..."
-          value="${actualWinner}"/>
-        <button class="boot-save-btn" onclick="saveBootWinner()">Save</button>
-      </div>
-    </div>`;
-  }
-
-  // My pick
-  if(!locked || myPick){
-    html += `<div class="boot-card" style="margin-bottom:14px">
-      <div class="boot-card-header">My Pick</div>
-      <div class="boot-input-wrap">
-        ${locked
-          ? `<div style="font-size:15px;font-weight:700;color:${actualWinner&&myPick.toLowerCase()===actualWinner.toLowerCase()?'var(--exact)':'var(--text)'}">
-              ${myPick||'No pick entered'}
-              ${actualWinner&&myPick.toLowerCase()===actualWinner.toLowerCase()?'<span style="color:var(--exact);font-size:12px"> ✅ +5 pts!</span>':''}
-            </div>`
-          : `<input type="text" id="boot-my-input" placeholder="e.g. Kylian Mbappé"
-              value="${myPick}"/>
-             <button class="boot-save-btn" onclick="saveMyBootPick()">Save</button>`
-        }
-      </div>
-    </div>`;
-  }
-
-  // Everyone's picks
-  html += `<div class="boot-card">
-    <div class="boot-card-header">All Picks</div>
-    ${FRIENDS.map(name=>{
-      const pick = gb.picks?.[name] || '';
-      const correct = locked && pick && pick.toLowerCase()===actualWinner.toLowerCase();
-      return `<div class="boot-pick-row">
-        <div class="boot-pick-name">${name}</div>
-        <div class="boot-pick-player ${pick?'':'empty'}">${pick||'No pick yet'}</div>
-        ${correct ? `<div style="font-size:13px;color:var(--exact)">+5 ✅</div>` : ''}
-      </div>`;
-    }).join('')}
-  </div>`;
-
-  document.getElementById('page-goldenboot').innerHTML = html;
+  document.getElementById('page-bonuses').innerHTML = `
+    <div style="padding-bottom:8px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold2);margin-bottom:4px">🎯 Bonus Predictions</div>
+      <div style="font-size:12px;color:var(--muted)">Each correct pick = 5 bonus points on the leaderboard</div>
+    </div>
+    ${buildBonusCard('scorer','👟','Top Scorer',actualScorer,myScorer,scorerData.picks,scorerLocked,'e.g. Kylian Mbappé')}
+    ${buildBonusCard('winner','🏆','WC Winner',actualWinner,myWinner,winnerData.picks,winnerLocked,'e.g. France')}`;
 }
 
-async function saveBootWinner(){
-  const val = document.getElementById('boot-actual-input')?.value.trim();
-  if(!val) return;
-  if(!STATE['__goldenboot__']) STATE['__goldenboot__']={actual:'',picks:{}};
-  STATE['__goldenboot__'].actual = val;
-  await persistState('__goldenboot__');
-  showToast('✅ Golden Boot winner saved!');
+async function saveBonusActual(key){
+  const val = document.getElementById(`bonus-actual-${key}`)?.value.trim();
+  if(!val){ showToast('⚠️ Enter a value first'); return; }
+  if(!STATE['__bonuses__']) STATE['__bonuses__']={};
+  if(!STATE['__bonuses__'][key]) STATE['__bonuses__'][key]={actual:'',picks:{}};
+  STATE['__bonuses__'][key].actual = val;
+  await persistState('__bonuses__');
+  showToast(`✅ ${key==='scorer'?'Top Scorer':'WC Winner'} set!`);
   renderAll();
 }
 
-async function saveMyBootPick(){
-  const val = document.getElementById('boot-my-input')?.value.trim();
-  if(!val){ showToast('⚠️ Enter a player name first'); return; }
-  const gb = STATE['__goldenboot__'] || {actual:'',picks:{}};
-  if(gb.actual){ showToast('🔒 Winner already declared — picks are locked'); return; }
-  if(!gb.picks) gb.picks={};
-  gb.picks[currentUser] = val;
-  STATE['__goldenboot__'] = gb;
-  await persistState('__goldenboot__');
-  showToast('✅ Your pick saved!');
+async function saveMyBonus(key){
+  const val = document.getElementById(`bonus-my-${key}`)?.value.trim();
+  if(!val){ showToast('⚠️ Enter a value first'); return; }
+  const bonuses = STATE['__bonuses__'] || {};
+  if(bonuses[key]?.actual){ showToast('🔒 Already declared — picks locked'); return; }
+  if(!STATE['__bonuses__']) STATE['__bonuses__']={};
+  if(!STATE['__bonuses__'][key]) STATE['__bonuses__'][key]={actual:'',picks:{}};
+  if(!STATE['__bonuses__'][key].picks) STATE['__bonuses__'][key].picks={};
+  STATE['__bonuses__'][key].picks[currentUser] = val;
+  await persistState('__bonuses__');
+  showToast('✅ Pick saved!');
   renderAll();
 }
 
@@ -1809,7 +1777,7 @@ function renderAll(){
   renderLeaderboard();
   'ABCDEFGHIJKL'.split('').forEach(g=>renderGroupPage(g));
   renderKnockout();
-  renderGoldenBoot();
+  renderBonuses();
 }
 
 // ══════════════════════════════════════════════════
