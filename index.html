@@ -14,7 +14,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, onSnapshot, collection
+  getFirestore, doc, getDoc, setDoc, onSnapshot, collection, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ════════════════════════════════════════════════════
@@ -41,6 +41,7 @@ window._getDoc      = getDoc;
 window._setDoc      = setDoc;
 window._onSnapshot  = onSnapshot;
 window._collection  = collection;
+window._deleteField = deleteField;
 window._firebaseReady = true;
 window._firebaseConfigured = true;
 window.dispatchEvent(new Event('firebase-ready'));
@@ -565,7 +566,7 @@ header{
           <button id="pen-btn-home" class="pen-btn" onclick="togglePen('home')">—</button>
           <button id="pen-btn-away" class="pen-btn" onclick="togglePen('away')">—</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:6px">Tap to select · tap again to deselect · shown always in knockout</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">Tap to select · tap again to deselect · only counts if you predict a draw</div>
       </div>
 
       <!-- Everyone's predictions -->
@@ -816,7 +817,10 @@ function startSync(){
     setSyncStatus('connecting');
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
-      STATE = snap.exists() ? (snap.data() || {}) : {};
+      if(!_pendingWrite){
+        // Only update STATE from Firebase when we're not in the middle of writing
+        STATE = snap.exists() ? (snap.data() || {}) : {};
+      }
       setSyncStatus('live');
       renderAll();
     }, err=>{
@@ -826,24 +830,42 @@ function startSync(){
   });
 }
 
+let _pendingWrite = false;
+
 async function persistState(matchId){
   setSyncStatus('saving');
+  _pendingWrite = true;
   try {
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
     if(matchId){
-      // Save only the specific match that changed — never overwrites other fields
-      await window._setDoc(ref, { [matchId]: STATE[matchId] }, { merge: true });
+      const data = JSON.parse(JSON.stringify(STATE[matchId] || {}));
+      await window._setDoc(ref, { [matchId]: data }, { merge: true });
     } else {
-      // Full save (used by ESPN sync) — still merge so nothing gets wiped
-      await window._setDoc(ref, STATE, { merge: true });
+      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
     }
     setSyncStatus('live');
   } catch(e){
     console.error(e);
     setSyncStatus('error');
     showToast('⚠️ Save failed — check connection');
+  } finally {
+    _pendingWrite = false;
   }
+}
+
+function flattenToDotNotation(obj, prefix=''){
+  const result = {};
+  for(const key in obj){
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    const val = obj[key];
+    if(val && typeof val === 'object' && !Array.isArray(val)){
+      Object.assign(result, flattenToDotNotation(val, fullKey));
+    } else {
+      result[fullKey] = val;
+    }
+  }
+  return result;
 }
 
 function setSyncStatus(s){
@@ -1112,19 +1134,18 @@ function openModal(id){
     penSec.style.display = 'block';
     document.getElementById('pen-btn-home').textContent = m.home;
     document.getElementById('pen-btn-away').textContent = m.away;
-    // Load existing pen pick (admin sees actual penWinner, others see their own)
+    // Load existing pen pick
     if(currentUser===ADMIN){
       currentPenPick = ms.actual?.penWinner || null;
     } else {
       currentPenPick = myPred.penWinner || null;
     }
     renderPenButtons();
-    if(locked && currentUser!==ADMIN){
-      // Show read-only after kickoff
-      document.querySelectorAll('.pen-btn').forEach(b=>b.style.pointerEvents='none');
-    } else {
-      document.querySelectorAll('.pen-btn').forEach(b=>b.style.pointerEvents='');
-    }
+    // Always enabled — ignored on save if score isn't a draw
+    document.querySelectorAll('.pen-btn').forEach(b=>{
+      b.style.opacity = '1';
+      b.style.pointerEvents = (locked && currentUser!==ADMIN) ? 'none' : '';
+    });
   } else if(penSec){
     penSec.style.display = 'none';
     currentPenPick = null;
@@ -1197,12 +1218,31 @@ function closeModalOnOverlay(e){ if(e.target===document.getElementById('overlay'
 
 async function clearMyPred(){
   if(!currentMatchId) return;
-  if(!STATE[currentMatchId]?.preds?.[currentUser]) return;
-  delete STATE[currentMatchId].preds[currentUser];
-  await persistState(currentMatchId);
+  const matchId = currentMatchId; // capture before any close
+  // Clear from state
+  if(STATE[matchId]?.preds?.[currentUser]){
+    delete STATE[matchId].preds[currentUser];
+  }
+  // Clear the input fields visually (stay on modal)
+  const hEl = document.getElementById('my-pred-h');
+  const aEl = document.getElementById('my-pred-a');
+  if(hEl) hEl.value = '';
+  if(aEl) aEl.value = '';
+  // Clear pen pick
+  currentPenPick = null;
+  renderPenButtons();
+  // Remove the × button since no prediction now
+  const myPredSection = document.querySelector('.my-pred-section');
+  if(myPredSection){
+    myPredSection.innerHTML=`
+      <div class="score-input-wrap">
+        <input type="number" id="my-pred-h" min="0" max="20" placeholder="0" value=""/>
+        <span class="dash">-</span>
+        <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value=""/>
+      </div>`;
+  }
+  await persistState(matchId);
   showToast('🗑️ Prediction cleared');
-  closeModal();
-  renderAll();
 }
 
 async function saveMatch(){
@@ -1227,8 +1267,9 @@ async function saveMatch(){
     const aA=document.getElementById('actual-a').value.trim();
     if(aH!=='' && aA!==''){
       ms.actual={h:parseInt(aH), a:parseInt(aA)};
-      if(ko && currentPenPick) ms.actual.penWinner=currentPenPick;
-      else if(ms.actual) delete ms.actual.penWinner;
+      const isActualDraw = parseInt(aH)===parseInt(aA);
+      if(ko && isActualDraw && currentPenPick) ms.actual.penWinner=currentPenPick;
+      else delete ms.actual.penWinner; // clear any stale pen winner if not a draw
     } else if(aH==='' && aA===''){
       ms.actual=null;
     }
@@ -1251,7 +1292,12 @@ async function saveMatch(){
     const pA=document.getElementById('my-pred-a')?.value ?? '';
     if(pH!=='' && pA!==''){
       if(!ms.preds) ms.preds={};
-      ms.preds[currentUser]={h:pH, a:pA, ...(ko&&currentPenPick?{penWinner:currentPenPick}:{})};
+      const isDraw = parseInt(pH)===parseInt(pA);
+      // Only save penWinner if it's a draw AND a pen pick was made; explicitly null otherwise to clear Firebase
+      const penWinner = (ko && isDraw && currentPenPick) ? currentPenPick : null;
+      ms.preds[currentUser]={h:pH, a:pA};
+      if(penWinner) ms.preds[currentUser].penWinner=penWinner;
+      else delete ms.preds[currentUser].penWinner; // ensure old value is gone
     } else if(pH==='' && pA===''){
       if(ms.preds) delete ms.preds[currentUser];
     }
@@ -1263,13 +1309,18 @@ async function saveMatch(){
     const pA=document.getElementById('my-pred-a')?.value ?? '';
     if(pH!=='' && pA!==''){
       if(!ms.preds) ms.preds={};
-      ms.preds[currentUser]={h:pH, a:pA, ...(ko&&currentPenPick?{penWinner:currentPenPick}:{})};
+      const isDraw = parseInt(pH)===parseInt(pA);
+      const penWinner = (ko && isDraw && currentPenPick) ? currentPenPick : null;
+      ms.preds[currentUser]={h:pH, a:pA};
+      if(penWinner) ms.preds[currentUser].penWinner=penWinner;
+      else delete ms.preds[currentUser].penWinner;
     }
   }
 
-  STATE[currentMatchId]=ms;
+  const matchIdToSave = currentMatchId;
+  STATE[matchIdToSave]=ms;
   closeModal();
-  await persistState(currentMatchId);
+  await persistState(matchIdToSave);
   showToast('✅ Saved!');
 }
 
@@ -1754,21 +1805,21 @@ async function saveBonusActual(key){
   STATE['__bonuses__'][key].actual = val;
   await persistState('__bonuses__');
   showToast(`✅ ${key==='scorer'?'Top Scorer':'WC Winner'} set!`);
-  renderAll();
+  // onSnapshot will re-render after Firebase confirms
 }
 
 async function saveMyBonus(key){
   const val = document.getElementById(`bonus-my-${key}`)?.value.trim();
   if(!val){ showToast('⚠️ Enter a value first'); return; }
-  const bonuses = STATE['__bonuses__'] || {};
-  if(bonuses[key]?.actual){ showToast('🔒 Already declared — picks locked'); return; }
   if(!STATE['__bonuses__']) STATE['__bonuses__']={};
+  const bonusKey = STATE['__bonuses__'][key];
+  if(bonusKey?.actual){ showToast('🔒 Already declared — picks locked'); return; }
   if(!STATE['__bonuses__'][key]) STATE['__bonuses__'][key]={actual:'',picks:{}};
   if(!STATE['__bonuses__'][key].picks) STATE['__bonuses__'][key].picks={};
   STATE['__bonuses__'][key].picks[currentUser] = val;
   await persistState('__bonuses__');
   showToast('✅ Pick saved!');
-  renderAll();
+  // onSnapshot will re-render after Firebase confirms
 }
 
 function renderAll(){
