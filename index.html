@@ -764,13 +764,25 @@ function calcPoints(actual, pred, matchId){
   const aH=parseInt(actual.h), aA=parseInt(actual.a);
   const pH=parseInt(pred.h),   pA=parseInt(pred.a);
   if(isNaN(aH)||isNaN(aA)||isNaN(pH)||isNaN(pA)) return null;
+
   let pts = 0;
-  if(aH===pH && aA===pA) pts=3;
-  else if(calcResult(aH,aA)===calcResult(pH,pA)) pts=1;
-  // Knockout: +1 bonus for correct pen pick — only valid when 90min score is a draw
-  if(pts>0 && matchId && isKnockout(matchId) && aH===aA && actual.penWinner && pred.penWinner){
-    if(actual.penWinner===pred.penWinner) pts+=1;
+  if(aH===pH && aA===pA) pts=3;                              // exact score → 3pts
+  else if(calcResult(aH,aA)===calcResult(pH,pA)) pts=1;      // correct result → 1pt
+
+  // Knockout pen bonus: +1 if
+  //   - player predicted a draw (pH===pA) — only draw predictions have a pen pick
+  //   - actual result is also a draw (aH===aA) — match actually went to pens
+  //   - both actual and predicted have a penWinner
+  //   - the pen picks match
+  //   - player got at least 1pt (correct result)
+  if(pts > 0 && matchId && isKnockout(matchId)
+     && aH===aA          // actual is a draw (went to pens)
+     && pH===pA          // player predicted a draw
+     && actual.penWinner && pred.penWinner
+     && actual.penWinner===pred.penWinner){
+    pts += 1;            // +1 bonus for correct pen winner
   }
+
   return pts;
 }
 function leaderboardData(){
