@@ -1429,7 +1429,10 @@ function getTomorrowMatches(){
 function isLiveNow(m){
   const now = Date.now();
   const ko = new Date(m.kickoff).getTime();
-  return now >= ko && now <= ko + 110*60000; // ~110 min window
+  const ko_id = m.id;
+  // Knockout matches can go to ET + pens (~150 min total) + buffer for final score to post
+  const windowMinutes = isKnockout(ko_id) ? 180 : 130;
+  return now >= ko && now <= ko + windowMinutes*60000;
 }
 
 function renderToday(){
@@ -1577,33 +1580,23 @@ function applyScores(matchList){
 }
 
 async function fetchFromWC26(){
-  const res = await fetch('https://worldcup26.ir/get/games',{signal:AbortSignal.timeout(8000)});
-  if(!res.ok) throw new Error('WC26 HTTP '+res.status);
-  const games = await res.json();
+  // openfootball/worldcup.json — no API key, no CORS issues, public GitHub data
+  const url = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+  const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
+  if(!res.ok) throw new Error('openfootball HTTP ' + res.status);
+  const data = await res.json();
 
-  // Log raw data so we can see exactly what fields the API uses
-  console.log('[WC26] Raw sample (first 3 games):', JSON.stringify(games.slice(0,3), null, 2));
+  console.log('[openfootball] Total matches:', data.matches?.length);
 
-  const finished = games.filter(g => {
-    const s = (g.status||'').toLowerCase();
-    return s==='completed'||s==='live'||s==='in_progress'||s==='finished'||s==='ft'||s==='1h'||s==='2h'||s==='ht';
-  });
-
-  console.log(`[WC26] ${games.length} total games, ${finished.length} live/finished`);
-
-  return finished.map(g => {
-    // Try every possible field name combination
-    const home = g.home_team?.name || g.home_team?.en || g.homeTeam?.name ||
-                 g.home?.name || g.home_team || g.home || '';
-    const away = g.away_team?.name || g.away_team?.en || g.awayTeam?.name ||
-                 g.away?.name || g.away_team || g.away || '';
-    const homeScore = parseInt(g.home_score ?? g.home_goals ?? g.homeScore ??
-                               g.score?.home ?? g.goals?.home ?? 0);
-    const awayScore = parseInt(g.away_score ?? g.away_goals ?? g.awayScore ??
-                               g.score?.away ?? g.goals?.away ?? 0);
-    console.log(`[WC26] ${home} ${homeScore}-${awayScore} ${away} [${g.status}]`);
-    return {home, away, homeScore, awayScore};
-  }).filter(g=>g.home&&g.away);
+  return (data.matches || [])
+    .filter(m => m.score?.ft)  // only matches with a final score
+    .map(m => ({
+      home: m.team1 || '',
+      away: m.team2 || '',
+      homeScore: m.score.ft[0],
+      awayScore: m.score.ft[1],
+    }))
+    .filter(m => m.home && m.away);
 }
 
 async function fetchFromESPN(){
@@ -1689,8 +1682,9 @@ let autoSyncInterval = null;
 function startAutoSync(){
   if(autoSyncInterval) return;
   autoSyncInterval = setInterval(()=>{
-    // Auto-sync whenever there are live matches, regardless of active tab
-    const hasLive = getTodayMatches().some(m=>isLiveNow(m));
+    // Check ALL matches (not just "today" by Cairo date) to avoid missing
+    // matches that started late at night and cross into the next Cairo day
+    const hasLive = ALL_MATCHES.some(m=>m.kickoff && isLiveNow(m));
     if(hasLive) syncESPN();
   }, 90*1000); // every 90 seconds during live matches
 }
