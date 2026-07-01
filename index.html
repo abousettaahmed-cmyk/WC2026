@@ -548,6 +548,15 @@ header{
             <span style="margin-left:8px;color:var(--muted);font-size:11px;">official result</span>
           </div>
         </div>
+        <!-- Admin: penalty winner for actual result (knockout only) -->
+        <div id="actual-pen-section" style="display:none;margin-top:10px">
+          <div class="section-label">🏆 Actual Penalty Winner</div>
+          <div class="pen-btns">
+            <button id="actual-pen-btn-home" class="pen-btn" onclick="toggleActualPen('home')">—</button>
+            <button id="actual-pen-btn-away" class="pen-btn" onclick="toggleActualPen('away')">—</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Select who won on penalties · tap again to deselect</div>
+        </div>
       </div>
 
       <!-- My prediction -->
@@ -713,12 +722,10 @@ function isKnockout(id){ return KNOCKOUT_IDS.has(id); }
 
 // ── Penalty state ──
 let currentPenPick = null;
+let adminPenPick   = null;
+
 function togglePen(side){
-  if(currentPenPick === side){
-    currentPenPick = null; // deselect
-  } else {
-    currentPenPick = side;
-  }
+  currentPenPick = currentPenPick===side ? null : side;
   renderPenButtons();
 }
 function renderPenButtons(){
@@ -727,6 +734,17 @@ function renderPenButtons(){
   if(!hBtn||!aBtn) return;
   hBtn.classList.toggle('selected', currentPenPick==='home');
   aBtn.classList.toggle('selected', currentPenPick==='away');
+}
+function toggleActualPen(side){
+  adminPenPick = adminPenPick===side ? null : side;
+  renderActualPenButtons();
+}
+function renderActualPenButtons(){
+  const hBtn = document.getElementById('actual-pen-btn-home');
+  const aBtn = document.getElementById('actual-pen-btn-away');
+  if(!hBtn||!aBtn) return;
+  hBtn.classList.toggle('selected', adminPenPick==='home');
+  aBtn.classList.toggle('selected', adminPenPick==='away');
 }
 
 // ══════════════════════════════════════════════════
@@ -1171,18 +1189,26 @@ function openModal(id){
     `${m.home} <span>vs</span> ${m.away}<br>
      <span style="font-size:12px;color:var(--muted)">${m.date} · ${m.time} · ${m.venue}</span>`;
 
-  // Admin: actual score inputs + admin pen pick
+  // Admin: actual score + penalty section
   const actualSec=document.getElementById('actual-section');
   actualSec.style.display = currentUser===ADMIN ? 'block' : 'none';
   if(currentUser===ADMIN){
     document.getElementById('actual-score-label').textContent =
       locked ? '✏️ Real Score — update anytime' : '✏️ Real Score — enter after match';
-    const hInput=document.getElementById('actual-h');
-    const aInput=document.getElementById('actual-a');
-    hInput.value = ms.actual?.h ?? '';
-    aInput.value = ms.actual?.a ?? '';
-    hInput.disabled = false;
-    aInput.disabled = false;
+    document.getElementById('actual-h').value = ms.actual?.h ?? '';
+    document.getElementById('actual-a').value = ms.actual?.a ?? '';
+    // Admin pen section — only for knockout matches
+    const actualPenSec = document.getElementById('actual-pen-section');
+    if(ko && actualPenSec){
+      actualPenSec.style.display = 'block';
+      document.getElementById('actual-pen-btn-home').textContent = m.home;
+      document.getElementById('actual-pen-btn-away').textContent = m.away;
+      adminPenPick = ms.actual?.penWinner || null;
+      renderActualPenButtons();
+    } else if(actualPenSec){
+      actualPenSec.style.display = 'none';
+      adminPenPick = null;
+    }
   }
 
   // My prediction — locked or open
@@ -1207,21 +1233,17 @@ function openModal(id){
   // Penalty winner section — always shown for knockout matches
   const penSec = document.getElementById('pen-section');
   if(ko && penSec){
-    penSec.style.display = 'block';
-    document.getElementById('pen-btn-home').textContent = m.home;
-    document.getElementById('pen-btn-away').textContent = m.away;
-    // Load existing pen pick
-    if(currentUser===ADMIN){
-      currentPenPick = ms.actual?.penWinner || null;
-    } else {
+    penSec.style.display = currentUser===ADMIN ? 'none' : 'block'; // admin has own section
+    if(currentUser!==ADMIN){
+      document.getElementById('pen-btn-home').textContent = m.home;
+      document.getElementById('pen-btn-away').textContent = m.away;
       currentPenPick = myPred.penWinner || null;
+      renderPenButtons();
+      document.querySelectorAll('.pen-btn').forEach(b=>{
+        b.style.opacity = '1';
+        b.style.pointerEvents = locked ? 'none' : '';
+      });
     }
-    renderPenButtons();
-    // Always enabled — ignored on save if score isn't a draw
-    document.querySelectorAll('.pen-btn').forEach(b=>{
-      b.style.opacity = '1';
-      b.style.pointerEvents = (locked && currentUser!==ADMIN) ? 'none' : '';
-    });
   } else if(penSec){
     penSec.style.display = 'none';
     currentPenPick = null;
@@ -1337,8 +1359,8 @@ async function saveMatch(){
     if(aH!=='' && aA!==''){
       ms.actual={h:parseInt(aH), a:parseInt(aA)};
       const isActualDraw = parseInt(aH)===parseInt(aA);
-      if(ko && isActualDraw && currentPenPick) ms.actual.penWinner=currentPenPick;
-      else delete ms.actual.penWinner; // clear any stale pen winner if not a draw
+      if(ko && isActualDraw && adminPenPick) ms.actual.penWinner = adminPenPick;
+      else delete ms.actual.penWinner;
     } else if(aH==='' && aA===''){
       ms.actual=null;
     }
