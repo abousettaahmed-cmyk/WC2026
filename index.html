@@ -1124,138 +1124,131 @@ function renderKnockout(){
 //  MODAL
 // ══════════════════════════════════════════════════
 function openModal(id){
-  currentMatchId=id;
-  const m=ALL_MATCHES.find(x=>x.id===id);
-  const ms=STATE[id]||{actual:null,preds:{}};
-  const locked=isLocked(m);
-  const ko=isKnockout(id);
+  currentMatchId = id;
+  const m   = ALL_MATCHES.find(x=>x.id===id);
+  const ms  = STATE[id] || {actual:null, preds:{}};
+  const locked = isLocked(m);
+  const ko     = isKnockout(id);
 
-  document.getElementById('modal-title').textContent=id;
-  document.getElementById('modal-match-name').innerHTML=
+  // Header
+  document.getElementById('modal-title').textContent = id;
+  document.getElementById('modal-match-name').innerHTML =
     `${m.home} <span>vs</span> ${m.away}<br>
      <span style="font-size:12px;color:var(--muted)">${m.date} · ${m.time} · ${m.venue}</span>`;
 
-  // Admin: actual score + penalty section
-  const actualSec=document.getElementById('actual-section');
+  // Admin: actual score + actual pen winner
+  const actualSec = document.getElementById('actual-section');
   actualSec.style.display = currentUser===ADMIN ? 'block' : 'none';
   if(currentUser===ADMIN){
     document.getElementById('actual-score-label').textContent =
       locked ? '✏️ Real Score — update anytime' : '✏️ Real Score — enter after match';
     document.getElementById('actual-h').value = ms.actual?.h ?? '';
     document.getElementById('actual-a').value = ms.actual?.a ?? '';
-    // Admin pen section — only for knockout matches
     const actualPenSec = document.getElementById('actual-pen-section');
-    if(ko && actualPenSec){
+    if(ko){
       actualPenSec.style.display = 'block';
       document.getElementById('actual-pen-btn-home').textContent = m.home;
       document.getElementById('actual-pen-btn-away').textContent = m.away;
       adminPenPick = ms.actual?.penWinner || null;
       renderActualPenButtons();
-    } else if(actualPenSec){
+    } else {
       actualPenSec.style.display = 'none';
       adminPenPick = null;
     }
   }
 
-  // My prediction — locked or open
+  // My prediction
   const myPredSection = document.querySelector('.my-pred-section');
-  const myPred=ms.preds?.[currentUser]||{h:'',a:''};
-
+  const myPred = ms.preds?.[currentUser] || {h:'', a:''};
   if(locked && currentUser!==ADMIN){
     let lockMsg = myPred.h!=='' ? `Your prediction: ${myPred.h} - ${myPred.a}` : 'No prediction entered before kickoff';
-    if(myPred.penWinner && parseInt(myPred.h)===parseInt(myPred.a)) lockMsg += ` · pens: ${myPred.penWinner==='home'?m.home:m.away}`;
-    myPredSection.innerHTML=`<div class="pred-input-locked">🔒 ${lockMsg}</div>`;
+    if(myPred.penWinner && parseInt(myPred.h)===parseInt(myPred.a))
+      lockMsg += ` · pens: ${myPred.penWinner==='home'?m.home:m.away}`;
+    myPredSection.innerHTML = `<div class="pred-input-locked">🔒 ${lockMsg}</div>`;
   } else {
     const hasPred = myPred.h!=='' && myPred.a!=='';
-    myPredSection.innerHTML=`
+    myPredSection.innerHTML = `
       <div class="score-input-wrap">
         <input type="number" id="my-pred-h" min="0" max="20" placeholder="0" value="${myPred.h}"/>
         <span class="dash">-</span>
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value="${myPred.a}"/>
-        ${hasPred ? `<button onclick="clearMyPred()" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:0" title="Clear prediction">×</button>` : ''}
+        ${hasPred ? `<button onclick="clearMyPred()" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:0">×</button>` : ''}
       </div>`;
   }
 
-  // Penalty winner section — always shown for knockout matches
+  // Player pen pick (all users including admin's own prediction, knockout only)
   const penSec = document.getElementById('pen-section');
-  if(ko && penSec){
-    penSec.style.display = currentUser===ADMIN ? 'none' : 'block'; // admin has own section
-    if(currentUser!==ADMIN){
-      document.getElementById('pen-btn-home').textContent = m.home;
-      document.getElementById('pen-btn-away').textContent = m.away;
-      currentPenPick = myPred.penWinner || null;
-      renderPenButtons();
-      document.querySelectorAll('.pen-btn').forEach(b=>{
-        b.style.opacity = '1';
-        b.style.pointerEvents = locked ? 'none' : '';
-      });
-    }
-  } else if(penSec){
+  if(ko){
+    penSec.style.display = 'block';
+    document.getElementById('pen-btn-home').textContent = m.home;
+    document.getElementById('pen-btn-away').textContent = m.away;
+    currentPenPick = myPred.penWinner || null;
+    renderPenButtons();
+    document.querySelectorAll('#pen-section .pen-btn').forEach(b=>{
+      b.style.pointerEvents = (locked && currentUser!==ADMIN) ? 'none' : '';
+      b.style.opacity       = (locked && currentUser!==ADMIN) ? '0.5' : '1';
+    });
+  } else {
     penSec.style.display = 'none';
     currentPenPick = null;
   }
 
   // Save button
-  const saveBtn = document.querySelector('.btn-primary');
-  saveBtn.style.display = (locked && currentUser!==ADMIN) ? 'none' : 'block';
+  document.querySelector('.btn-primary').style.display =
+    (locked && currentUser!==ADMIN) ? 'none' : 'block';
 
-  // Predictions grid
-  const grid=document.getElementById('all-preds-grid');
-
+  // All predictions grid
+  const grid = document.getElementById('all-preds-grid');
   if(currentUser===ADMIN){
-    const headerMsg = locked
+    const hdr = locked
       ? `<div style="grid-column:1/-1;color:var(--gold);font-size:11px;text-align:center;padding:4px 0 8px">⚙️ Admin — edit any prediction</div>`
       : `<div style="grid-column:1/-1;color:var(--muted);font-size:11px;text-align:center;padding:4px 0 8px">Predictions hidden from players until kickoff</div>`;
-    grid.innerHTML = headerMsg + FRIENDS.map(name=>{
-      const pred=ms.preds?.[name]||{h:'',a:''};
-      const pts=calcPoints(ms.actual, pred, id);
-      const cls=pts>=3?'exact':pts===1||pts===2?'result':pts===0?'wrong':'';
+    grid.innerHTML = hdr + FRIENDS.map(name=>{
+      const pred = ms.preds?.[name] || {h:'', a:''};
+      const pts  = calcPoints(ms.actual, pred, id);
+      const cls  = pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
       const penInfo = pred.penWinner && ko && parseInt(pred.h)===parseInt(pred.a)
         ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">pens: ${pred.penWinner==='home'?m.home:m.away}</span>` : '';
       return `<div class="pred-display-row ${cls}" style="flex-direction:column;gap:6px;align-items:flex-start">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
         <div class="score-input-wrap">
-          <input type="number" min="0" max="20" placeholder="0"
-            id="admin-pred-${name}-h" value="${pred.h}"
-            style="width:44px;height:32px;font-size:15px"/>
+          <input type="number" min="0" max="20" placeholder="0" id="admin-pred-${name}-h" value="${pred.h}" style="width:44px;height:32px;font-size:15px"/>
           <span class="dash">-</span>
-          <input type="number" min="0" max="20" placeholder="0"
-            id="admin-pred-${name}-a" value="${pred.a}"
-            style="width:44px;height:32px;font-size:15px"/>
+          <input type="number" min="0" max="20" placeholder="0" id="admin-pred-${name}-a" value="${pred.a}" style="width:44px;height:32px;font-size:15px"/>
           ${pts!==null?`<span style="margin-left:6px;font-size:11px;color:var(--muted)">${pts}pt${pts!==1?'s':''}</span>`:''}
           ${penInfo}
         </div>
       </div>`;
     }).join('');
   } else if(!locked){
-    grid.innerHTML=`<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:8px 0">
-      Other predictions are hidden until kickoff 🔒
-    </div>
-    ${FRIENDS.map(name=>{
+    grid.innerHTML = FRIENDS.map(name=>{
       const hasPred = !!(ms.preds?.[name]);
       const isMe = name===currentUser;
       return `<div class="pred-display-row">
         <span class="pname">${name}${isMe?' (you)':''}</span>
-        <span class="pscore" style="font-size:13px;color:${hasPred?'var(--result)':'var(--muted)'}">${hasPred?'✅ Ready':'⏳ Pending'}</span>
+        <span class="pscore" style="font-size:13px;color:${hasPred?'var(--result)':'var(--muted)'}">
+          ${hasPred?'✅ Ready':'⏳ Pending'}
+        </span>
       </div>`;
-    }).join('')}`;
+    }).join('') + `<div style="grid-column:1/-1;color:var(--muted);font-size:11px;text-align:center;padding:4px 0">Predictions hidden until kickoff 🔒</div>`;
   } else {
-    grid.innerHTML=FRIENDS.map(name=>{
-      const pred=ms.preds?.[name];
-      const pts=calcPoints(ms.actual, pred, id);
-      const cls=pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
-      const scoreStr=pred?`${pred.h} - ${pred.a}`:'No prediction';
-      const penStr=pred?.penWinner&&ko&&parseInt(pred.h)===parseInt(pred.a)?` · pens: ${pred.penWinner==='home'?m.home:m.away}`:'';
-      const ptsStr=pts!==null?` · ${pts}pt${pts!==1?'s':''}`:' · pending';
+    grid.innerHTML = FRIENDS.map(name=>{
+      const pred = ms.preds?.[name];
+      const pts  = calcPoints(ms.actual, pred, id);
+      const cls  = pts>=3?'exact':pts===2?'exact':pts===1?'result':pts===0?'wrong':'';
+      const penStr = pred?.penWinner && ko && parseInt(pred.h)===parseInt(pred.a)
+        ? ` · pens: ${pred.penWinner==='home'?m.home:m.away}` : '';
+      const ptsStr = pts!==null ? ` · ${pts}pt${pts!==1?'s':''}` : ' · pending';
       return `<div class="pred-display-row ${cls}">
         <span class="pname">${name}${name===currentUser?' (you)':''}</span>
-        <span class="pscore">${scoreStr}${penStr}<span style="font-size:11px;opacity:.7">${ptsStr}</span></span>
+        <span class="pscore">${pred?`${pred.h} - ${pred.a}`:'No prediction'}${penStr}<span style="font-size:11px;opacity:.7">${ptsStr}</span></span>
       </div>`;
     }).join('');
   }
 
   document.getElementById('overlay').classList.add('open');
 }
+
 
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); currentMatchId=null; }
 function closeModalOnOverlay(e){ if(e.target===document.getElementById('overlay')) closeModal(); }
@@ -1267,7 +1260,6 @@ async function clearMyPred(){
   if(STATE[matchId].preds) delete STATE[matchId].preds[currentUser];
   currentPenPick = null;
   renderPenButtons();
-  // Clear the input fields visually — stay on modal
   const myPredSection = document.querySelector('.my-pred-section');
   if(myPredSection){
     myPredSection.innerHTML=`
@@ -1277,18 +1269,16 @@ async function clearMyPred(){
         <input type="number" id="my-pred-a" min="0" max="20" placeholder="0" value=""/>
       </div>`;
   }
-  // Save to Firebase first — onSnapshot will confirm and re-render
   await persistState(matchId);
   showToast('🗑️ Prediction cleared');
 }
 
 async function saveMatch(){
   if(!currentMatchId) return;
-  const m=ALL_MATCHES.find(x=>x.id===currentMatchId);
-  const locked=isLocked(m);
-  const ko=isKnockout(currentMatchId);
+  const m      = ALL_MATCHES.find(x=>x.id===currentMatchId);
+  const locked = isLocked(m);
+  const ko     = isKnockout(currentMatchId);
 
-  // Non-admin on a locked match — nothing to do
   if(locked && currentUser!==ADMIN){
     closeModal();
     showToast('🔒 Predictions locked at kickoff');
@@ -1296,69 +1286,48 @@ async function saveMatch(){
   }
 
   if(!STATE[currentMatchId]) STATE[currentMatchId]={actual:null,preds:{}};
-  const ms=STATE[currentMatchId];
+  const ms = STATE[currentMatchId];
 
-  // ── Admin: update real score + pen winner ──
+  // Admin: save actual score + actual pen winner
   if(currentUser===ADMIN){
-    const aH=document.getElementById('actual-h').value.trim();
-    const aA=document.getElementById('actual-a').value.trim();
-    console.log('[saveMatch] Admin saving: aH=', aH, 'aA=', aA, 'adminPenPick=', adminPenPick, 'ko=', ko);
+    const aH = document.getElementById('actual-h').value.trim();
+    const aA = document.getElementById('actual-a').value.trim();
     if(aH!=='' && aA!==''){
-      const isActualDraw = parseInt(aH)===parseInt(aA);
       ms.actual = {h:parseInt(aH), a:parseInt(aA)};
-      if(ko && isActualDraw && adminPenPick){
+      if(ko && parseInt(aH)===parseInt(aA) && adminPenPick){
         ms.actual.penWinner = adminPenPick;
-        console.log('[saveMatch] Saved penWinner:', adminPenPick);
-      }
-      // Note: only delete penWinner if score is NOT a draw
-      // If it's a draw but no pen pick yet, preserve any existing penWinner
-      if(!isActualDraw){
+      } else {
         delete ms.actual.penWinner;
       }
     } else if(aH==='' && aA===''){
-      ms.actual=null;
+      ms.actual = null;
     }
-
-    // Admin: save all players' predictions
+    // Admin: update all players' scores
     if(!ms.preds) ms.preds={};
     FRIENDS.forEach(name=>{
-      const pH=document.getElementById(`admin-pred-${name}-h`)?.value.trim() ?? '';
-      const pA=document.getElementById(`admin-pred-${name}-a`)?.value.trim() ?? '';
+      const pH = document.getElementById(`admin-pred-${name}-h`)?.value.trim() ?? '';
+      const pA = document.getElementById(`admin-pred-${name}-a`)?.value.trim() ?? '';
       if(pH!=='' && pA!==''){
-        const existing = ms.preds[name] || {};
-        ms.preds[name]={h:pH, a:pA, ...(existing.penWinner?{penWinner:existing.penWinner}:{})};
+        const existingPen = ms.preds[name]?.penWinner;
+        ms.preds[name] = {h:pH, a:pA};
+        if(existingPen && parseInt(pH)===parseInt(pA)) ms.preds[name].penWinner = existingPen;
       }
     });
   }
 
-  // ── Regular user before kickoff: save prediction + pen pick ──
-  if(!locked && currentUser!==ADMIN){
-    const pH=document.getElementById('my-pred-h')?.value ?? '';
-    const pA=document.getElementById('my-pred-a')?.value ?? '';
+  // Player (or admin's own): save prediction + pen pick
+  if(!locked || currentUser===ADMIN){
+    const pH = document.getElementById('my-pred-h')?.value ?? '';
+    const pA = document.getElementById('my-pred-a')?.value ?? '';
     if(pH!=='' && pA!==''){
       if(!ms.preds) ms.preds={};
+      ms.preds[currentUser] = {h:pH, a:pA};
       const isDraw = parseInt(pH)===parseInt(pA);
-      // Only save penWinner if it's a draw AND a pen pick was made; explicitly null otherwise to clear Firebase
-      const penWinner = (ko && isDraw && currentPenPick) ? currentPenPick : null;
-      ms.preds[currentUser]={h:pH, a:pA};
-      if(penWinner) ms.preds[currentUser].penWinner=penWinner;
-      else delete ms.preds[currentUser].penWinner; // ensure old value is gone
-    } else if(pH==='' && pA===''){
+      if(ko && isDraw && currentPenPick){
+        ms.preds[currentUser].penWinner = currentPenPick;
+      }
+    } else if(pH==='' && pA==='' && !locked){
       if(ms.preds) delete ms.preds[currentUser];
-    }
-  }
-
-  // Admin's own prediction also saves pen pick
-  if(!locked && currentUser===ADMIN){
-    const pH=document.getElementById('my-pred-h')?.value ?? '';
-    const pA=document.getElementById('my-pred-a')?.value ?? '';
-    if(pH!=='' && pA!==''){
-      if(!ms.preds) ms.preds={};
-      const isDraw = parseInt(pH)===parseInt(pA);
-      const penWinner = (ko && isDraw && currentPenPick) ? currentPenPick : null;
-      ms.preds[currentUser]={h:pH, a:pA};
-      if(penWinner) ms.preds[currentUser].penWinner=penWinner;
-      else delete ms.preds[currentUser].penWinner;
     }
   }
 
@@ -1368,6 +1337,7 @@ async function saveMatch(){
   closeModal();
   showToast('✅ Saved!');
 }
+
 
 // ══════════════════════════════════════════════════
 //  TODAY PAGE
