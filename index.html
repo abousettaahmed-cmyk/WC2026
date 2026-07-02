@@ -849,8 +849,16 @@ function startSync(){
     if(unsubscribe) unsubscribe();
     unsubscribe = window._onSnapshot(docRef, snap=>{
       if(snap.exists()){
-        STATE = snap.data() || {};
-        // Clean stale penWinner from non-draw predictions (in memory only for display)
+        const fbData = snap.data() || {};
+        STATE = fbData;
+        // Restore any locally-written fields that Firebase hasn't confirmed yet
+        // This prevents the onSnapshot echo from overwriting our just-saved data
+        Object.keys(_pendingState).forEach(matchId=>{
+          if(_pendingState[matchId] !== null){
+            STATE[matchId] = _pendingState[matchId];
+          }
+        });
+        // Clean stale penWinner (in-memory only)
         Object.keys(STATE).forEach(matchId=>{
           if(matchId.startsWith('__')) return;
           const match = STATE[matchId];
@@ -876,9 +884,12 @@ function startSync(){
 }
 
 let _pendingWrite = false;
+let _pendingState = {}; // local fields written but not yet confirmed by Firebase
 
 async function persistState(matchId){
   setSyncStatus('saving');
+  _pendingWrite = true;
+  if(matchId) _pendingState[matchId] = JSON.parse(JSON.stringify(STATE[matchId] ?? null));
   try {
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
@@ -891,6 +902,12 @@ async function persistState(matchId){
     console.error('[persistState]', e);
     setSyncStatus('error');
     showToast('⚠️ Save failed — check connection');
+  } finally {
+    // Keep pending for a bit longer to survive the onSnapshot echo
+    setTimeout(()=>{
+      if(matchId) delete _pendingState[matchId];
+      if(Object.keys(_pendingState).length===0) _pendingWrite = false;
+    }, 3000);
   }
 }
 
