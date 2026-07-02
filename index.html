@@ -1310,7 +1310,7 @@ async function saveMatch(){
     const aH = document.getElementById('actual-h').value.trim();
     const aA = document.getElementById('actual-a').value.trim();
     if(aH!=='' && aA!==''){
-      ms.actual = {h:parseInt(aH), a:parseInt(aA)};
+      ms.actual = {h:parseInt(aH), a:parseInt(aA), manual:true};
       if(ko && parseInt(aH)===parseInt(aA) && adminPenPick){
         ms.actual.penWinner = adminPenPick;
       } else {
@@ -1531,6 +1531,11 @@ function applyScores(matchList){
       return (mH===h1 && mA===a1) || (mH===a1 && mA===h1);
     });
     if(!match) return;
+    // Never overwrite a score that was manually entered by admin
+    if(STATE[match.id]?.actual?.manual){
+      console.log(`[Sync] ⏭️ Skipping ${match.home} vs ${match.away} — manually set`);
+      return;
+    }
     const flipped = normalizeTeam(match.home) !== h1;
     const h = flipped ? item.awayScore : item.homeScore;
     const a = flipped ? item.homeScore : item.awayScore;
