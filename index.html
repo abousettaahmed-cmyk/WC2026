@@ -888,22 +888,53 @@ let _pendingState = {}; // local fields written but not yet confirmed by Firebas
 
 async function persistState(matchId){
   setSyncStatus('saving');
-  _pendingWrite = true;
   if(matchId) _pendingState[matchId] = JSON.parse(JSON.stringify(STATE[matchId] ?? null));
   try {
     const db  = window._db;
     const ref = window._doc(db, 'wc2026', 'matches');
-    const data = matchId
-      ? { [matchId]: JSON.parse(JSON.stringify(STATE[matchId] ?? null)) }
-      : JSON.parse(JSON.stringify(STATE));
-    await window._setDoc(ref, data, { merge: true });
+
+    if(matchId === '__bonuses__'){
+      // Use dot-notation to write each bonus sub-field individually
+      // This prevents overwriting sibling fields (scorer vs winner)
+      const bonuses = STATE['__bonuses__'] || {};
+      const payload = {};
+      ['scorer','winner'].forEach(k=>{
+        if(bonuses[k]){
+          payload[`__bonuses__.${k}.actual`] = bonuses[k].actual || '';
+          // Write each person's pick individually
+          Object.keys(bonuses[k].picks || {}).forEach(name=>{
+            payload[`__bonuses__.${k}.picks.${name}`] = bonuses[k].picks[name];
+          });
+        }
+      });
+      if(Object.keys(payload).length > 0){
+        await window._updateDoc(ref, payload);
+      } else {
+        // First time — create the document with setDoc
+        await window._setDoc(ref, { '__bonuses__': bonuses }, { merge: true });
+      }
+    } else if(matchId){
+      const data = { [matchId]: JSON.parse(JSON.stringify(STATE[matchId] ?? null)) };
+      await window._setDoc(ref, data, { merge: true });
+    } else {
+      await window._setDoc(ref, JSON.parse(JSON.stringify(STATE)), { merge: true });
+    }
     setSyncStatus('live');
   } catch(e){
+    // If updateDoc fails because doc doesn't exist, fall back to setDoc
+    if(e?.code === 'not-found' || e?.message?.includes('not-found')){
+      try {
+        const db  = window._db;
+        const ref = window._doc(db, 'wc2026', 'matches');
+        await window._setDoc(ref, { [matchId]: STATE[matchId] ?? null });
+        setSyncStatus('live');
+        return;
+      } catch(e2){ console.error('[persistState fallback]', e2); }
+    }
     console.error('[persistState]', e);
     setSyncStatus('error');
     showToast('⚠️ Save failed — check connection');
   } finally {
-    // Keep pending for a bit longer to survive the onSnapshot echo
     setTimeout(()=>{
       if(matchId) delete _pendingState[matchId];
       if(Object.keys(_pendingState).length===0) _pendingWrite = false;
